@@ -4,40 +4,73 @@ const axios = require('axios');
 
 const fs = require('fs');
 
+class User {
 
-//начальный диалог при запуске бота
-bot.onText(/\/start/, (msg) => {
-	getUserStatus(msg.from.id).then( userStatus => {
+	isAdmin = false;
+	firstName;
+	userName;
+	chatId;
+
+	constructor(firstName,userName,chatId) {
+		this.firstName = firstName;
+		this.userName = userName;
+		this.chatId = chatId;
+	}
+
+}
+
+class UserAdmin extends User {
+
+	isAdmin = true;
+
+	constructor(firstName,userName,chatId) {
+		super(firstName,userName,chatId);
+	}
+	
+
+}
+
+function createUser(msg) {
+
+	let chatId = msg.chat.id;
+	let userId = msg.from.id;
+	let firstName = msg.from.first_name;
+	let userName = msg.from.username;
+	let userStatus;
+
+	axios.post(`${telegramAPI}getChatMember`, {
+		chat_id: channelId,
+		user_id: userId
+	}).then( response => {
+		userStatus = response.data.result.status;
+
 		switch ( userStatus ) {
 			case 'creator':
 			case 'administrator': {
-				axios.post(`${telegramAPI}sendMessage`, {
-					chat_id: helper.getChatId(msg),
-					text: `привет, ${msg.from.first_name}, выбери что тебя интересует:\nиспользуй клавиатурные кнопки`,
-					reply_markup: {
-						keyboard: keyboard.adminHome,
-						resize_keyboard: true			
-					}
-				})//.then( (msg) => adminActions());
+				// создать сущность админа в бд
+				
 			} break;
 			case 'member': {
-				axios.post(`${telegramAPI}sendMessage`, {
-					chat_id: helper.getChatId(msg),
-					text: `привет, ${msg.from.first_name}, выбери вариант пикч,\nкоторые хочешь сейчас предложить`,
-					reply_markup: {
-						keyboard: keyboard.member,
-						resize_keyboard: true			
-					}
-				})
+				// создать сущность подписчика в бд
 			} break;
-			case 'left': {
-				axios.post(`${telegramAPI}sendMessage`, {
-					chat_id: helper.getChatId(msg),
-					text: 'ты не подписан на канал: \nhttps://t.me/prnaddiction \nподпишись, чтобы отрпавить пикчи в предложку',
-				})
-			} break;
-		}
+			default: {
+				bot.sendMessage(chatId, 'подпишись и продолжим:\n@prnaddiction');
+			}
+		};
 	} )
+
+	
+
+
+}
+
+
+//начальный диалог при запуске бота
+bot.onText(/\/start/, (msg) => {
+
+	createUser(msg);
+
 });		
+
 
 
