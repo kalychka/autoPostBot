@@ -8,9 +8,12 @@ const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
 const channelId = '@whorebotplace';
 
+const sequalize = require('./db');
+
 module.exports = {
     bot,
     telegramAPI,
     token,
-    channelId
+    channelId,
+    sequalize
 }
