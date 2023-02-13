@@ -136,12 +136,12 @@ async function addDownloadQueue(msg) {
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
 				isAdmin: true
 			}).then( () => {
-				bot.sendMessage(msg.chat.id, 'посмотрел пикчи, добавить в очередь постинга?', {
-					reply_markup: {
-						keyboard: keyboard.adminStartUpload,
-						resize_keyboard: true
-					}
-				});
+				// bot.sendMessage(msg.chat.id, 'посмотрел пикчи, добавить в очередь постинга?', {
+				// 	reply_markup: {
+				// 		keyboard: keyboard.adminStartUpload,
+				// 		resize_keyboard: true
+				// 	}
+				// });
 			} )
 		} else {
 			DownloadQueueShema.create({
@@ -302,6 +302,14 @@ async function adminActions(msg) {
 		if ( userAdmin instanceof UserShema && userAdmin.isAdmin ) {
 
 			switch ( message ) {
+				case kb.adminHome.createPost: {
+					bot.sendMessage(userAdmin.chatId, 'жду пикчи от тебя, проверь и подтверди', {
+						reply_markup: {
+							keyboard: keyboard.adminStartUpload,
+							resize_keyboard: true
+						}
+					});
+				} break;
 				case kb.adminHome.info: {
 					getInfo(userAdmin);
 				} break;
@@ -366,7 +374,7 @@ async function getInfo(userAdmin) {
 			\nколичество постов в архиве: ${newData.countOfPost}
 			\nинтервал постинга: ${newData.postingInterval / 60000} мин
 			\nпримерное время постинга: ${newData.estimatedPostingTime}`);
-			
+
 		} )
 	})
 

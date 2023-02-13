@@ -3,6 +3,7 @@ const kb = require('./keyboard-buttons')
 
 module.exports = {
 	adminHome: [
+		[kb.adminHome.createPost],
 		[kb.adminHome.info, kb.adminHome.startStopPosting],
 		[kb.adminHome.adminMembersPics]
 	],

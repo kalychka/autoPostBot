@@ -1,5 +1,6 @@
 module.exports = {
 	adminHome: {
+		createPost: 'создать пост',
 		info: 'инфо',
 		startStopPosting: 'on/off постинг',
 		adminMembersPics: 'предложка'
