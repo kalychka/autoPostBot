@@ -108,13 +108,13 @@ async function start() {
 	});
 
 	//запуск админского диалога
-	bot.onText(/[создать пост|инфо|on/off постинг|предложка]/, adminActions);
+	bot.onText(/[инфо|on/off постинг|предложка]/, adminActions);
 
 	//запуск прослушки пикч в диалоге
 	bot.on('photo', addDownloadQueue);
 
 	//запуск прослушки подтверждения загрузки
-	bot.onText(/[загрузить|отмена]/, savePostFromQueue); 
+	bot.onText(/[загрузить|удалить]/, savePostFromQueue); 
 
 	//запись в логи бота
 	updateInfo(60000, false, 'prnaddictionBot');
@@ -210,7 +210,7 @@ function savePostFromQueue(msg) {
 				}).then( () => namesOfDownloadPic = [] );
 			}
 	
-		} else if ( msg.text == 'отмена' ) {
+		} else if ( msg.text == 'удалить' ) {
 
 			posts.forEach(element => element.destroy());
 	
@@ -302,14 +302,6 @@ async function adminActions(msg) {
 		if ( userAdmin instanceof UserShema && userAdmin.isAdmin ) {
 
 			switch ( message ) {
-				case kb.adminHome.createPost: {
-					bot.sendMessage(userAdmin.chatId, 'жду пикчи от тебя, проверь и подтверди', {
-						reply_markup: {
-							keyboard: keyboard.adminStartUpload,
-							resize_keyboard: true
-						}
-					});
-				} break;
 				case kb.adminHome.info: {
 					getInfo(userAdmin);
 				} break;
