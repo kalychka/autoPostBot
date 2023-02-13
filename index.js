@@ -18,7 +18,7 @@ const path = require('path');
 
 const download = require('download');
 
-const {UserShema, PostShema, DownloadQueueShema} = require('./models');
+const {UserShema, PostShema, DownloadQueueShema, InfoShema} = require('./models');
 
 
 class User {
@@ -115,6 +115,9 @@ async function start() {
 
 	//запуск прослушки подтверждения загрузки
 	bot.onText(/[загрузить|отмена]/, savePostFromQueue); 
+
+	//запись в логи бота
+	updateInfo(60000, false, 'prnaddictionBot');
 
 };
 
@@ -352,21 +355,41 @@ async function createPostInDB(name, chatId, authorUserName) {
 //постит информацию о боте
 async function getInfo(userAdmin) {
 
-	console.log('getInfo');
+	InfoShema.findOne({
+		order: [ [ 'ID', 'DESC' ]]
+	}).then( data => {
+		
+		updateInfo(data.postingInterval, data.onPosting, userAdmin.userName).then( (newData) => {
+			
+			bot.sendMessage(userAdmin.chatId, 
+			`постинг: ${ newData.onPosting ? 'исполняется' : 'остановлен'}
+			\nколичество постов в архиве: ${newData.countOfPost}
+			\nинтервал постинга: ${newData.postingInterval / 60000} мин
+			\nпримерное время постинга: ${newData.estimatedPostingTime}`);
+			
+		} )
+	})
 
-	// let picCount = fs.readdirSync('./img',  { withFileTypes: true }).length;
+}
 
-	// let interval = (postingInterval / 60000); 
+async function updateInfo(postingInterval, onPosting, userName) {
 
-	// axios.post(`${telegramAPI}sendMessage`, {
-	// 	chat_id: helper.getChatId(msg),
-	// 	text: `пикч на облаке: ${picCount}\nпостинг запущен: ${postingIs}\nинтервал постинга: ${interval.toFixed(2)} мин`,
-	// 	reply_markup: {
-	// 		keyboard: keyboard.adminCheckInfo,
-	// 		resize_keyboard: true			
-	// 	}	
-	// });
+	let countOfPost = await PostShema.count();
+	let estimatedPostingTime = countOfPost * (postingInterval / 60000 ) + ' мин';
 
+	if ( estimatedPostingTime > 60 ) {
+		estimatedPostingTime = estimatedPostingTime / 60 + ' часа';
+	};
+	
+	return (
+		InfoShema.create({
+			countOfPost: countOfPost,
+			postingInterval: postingInterval,
+			estimatedPostingTime: estimatedPostingTime,
+			onPosting: onPosting,
+			userName: userName
+		})
+	)
 }
 
 //подключение к БД, если успешно => старт начального диалога
