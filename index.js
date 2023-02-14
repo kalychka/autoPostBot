@@ -121,7 +121,7 @@ async function start() {
 	bot.onText(/[загрузить|удалить]/, savePostFromQueue); 
 
 	//запись в логи бота
-	updateInfo(2000, false, 'prnaddictionBot').then( (data) => {
+	updateInfo(120000, false, 'prnaddictionBot').then( (data) => {
 		onPosting = data.onPosting;
 		postingInterval = data.postingInterval;
 		setInterval(autoPost, postingInterval);
@@ -181,26 +181,14 @@ async function addDownloadQueue(msg) {
 				chatId: msg.chat.id,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
 				isAdmin: true
-			}).then( () => {
-				// bot.sendMessage(msg.chat.id, 'посмотрел пикчи, добавить в очередь постинга?', {
-				// 	reply_markup: {
-				// 		keyboard: keyboard.adminStartUpload,
-				// 		resize_keyboard: true
-				// 	}
-				// });
-			} )
+			});
 		} else {
 			DownloadQueueShema.create({
 				chatId: msg.chat.id,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
 				isAdmin: false
 			}).then( () => {
-				bot.sendMessage(msg.chat.id, 'посмотрел пикчи, отправить в предложку?', {
-					reply_markup: {
-						keyboard: keyboard.adminStartUpload,
-						resize_keyboard: true
-					}
-				});
+				bot.sendMessage(msg.chat.id, 'посмотрел пикчи, отправить в предложку?');
 			} )
 		}
 
@@ -359,6 +347,9 @@ async function adminActions(msg) {
 						bot.sendMessage(userAdmin.chatId, `авто постинг ${autoPostingIs}`);
 					} )
 				} break;
+				case kb.adminHome.changeInterval: {
+					changePostingInterval(userAdmin);
+				} break;
 				case kb.adminHome.adminMembersPics: {
 					//предложка
 				} break;
@@ -366,6 +357,33 @@ async function adminActions(msg) {
 		}
 
 	} )
+}
+
+//изменяет интервал постинга
+function changePostingInterval(userAdmin) {
+
+	bot.sendMessage(userAdmin.chatId, 'введи новый интервал постинга в минутах, жду').then( () => {
+		bot.onText(/[1-9]/, (msg) => {
+			bot.removeTextListener(/[1-9]/);
+
+			if ( msg.text != 0 ) {
+
+				updateInfo(msg.text, onPosting, userAdmin.userName).then( (data) => {
+
+					if ( data instanceof InfoShema) {
+
+						bot.sendMessage(userAdmin.chatId, `интервал изменен: ${data.postingInterval} мин
+						\nпользователь: @${data.userName}`);
+
+					}
+
+				} )
+
+			}
+
+		})
+	} )
+
 }
 
 //сохраняет пикчи на диск
@@ -426,11 +444,22 @@ async function getInfo(userAdmin) {
 async function updateInfo(postingInterval, onPosting, userName) {
 
 	let countOfPost = await PostShema.count();
-	let estimatedPostingTime = (countOfPost * (postingInterval / 60000 )).toFixed(2) + ' мин';
+	let estimatedPostingTime;
 
-	if ( estimatedPostingTime > 60 ) {
-		estimatedPostingTime = (estimatedPostingTime / 60).toFixed(2) + ' часа';
-	};
+	//примерное время постинга, учитывая кол-во постов
+
+	//подсчет в минутах
+	estimatedPostingTime = ((postingInterval / 60000) * countOfPost).toFixed(2);
+
+	if ( estimatedPostingTime >= 60 ) {
+		let hours = Math.trunc(estimatedPostingTime/60);
+		let minutes = estimatedPostingTime % 60;
+
+		estimatedPostingTime = `${hours} ч. ${minutes} м.`;
+
+	} else {
+		estimatedPostingTime = estimatedPostingTime + ' мин';
+	}
 	
 	return (
 		InfoShema.create({

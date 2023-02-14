@@ -6,13 +6,7 @@ module.exports = {
 		//[kb.adminHome.createPost],
 		[kb.adminHome.startUpload, kb.adminHome.cancelUpload],
 		[kb.adminHome.info, kb.adminHome.startStopPosting],
-		[kb.adminHome.adminMembersPics]
-	],
-	confirmOrDeletePost: [
-		[kb.confirmOrDeletePost.confirm, kb.confirmOrDeletePost.delete],
-	],
-	adminStartUpload: [
-		[kb.adminStartUpload.confirm, kb.adminStartUpload.delete]
+		[kb.adminHome.adminMembersPics, kb.adminHome.changeInterval]
 	],
 	userHome: [
 		[kb.userHome.offerPics]

@@ -4,18 +4,8 @@ module.exports = {
 		cancelUpload: 'удалить',
 		info: 'инфо',
 		startStopPosting: 'on/off постинг',
-		adminMembersPics: 'предложка'
-	},
-	adminCreatePost: {
-		confirm: 'подтвердить'
-	},
-	confirmOrDeletePost: {
-		confirm: '💾',
-		delete: '❌'
-	},
-	adminStartUpload: {
-		confirm: 'загрузить',
-		delete: 'отмена'
+		adminMembersPics: 'предложка',
+		changeInterval: 'интервал'
 	},
 	userHome: {
 		offerPics: 'подтвердить'
