@@ -20,6 +20,10 @@ const download = require('download');
 
 const {UserShema, PostShema, DownloadQueueShema, InfoShema} = require('./models');
 
+const FormData = require('form-data');
+
+let onPosting, postingInterval;
+
 
 class User {
 
@@ -117,9 +121,40 @@ async function start() {
 	bot.onText(/[загрузить|удалить]/, savePostFromQueue); 
 
 	//запись в логи бота
-	updateInfo(60000, false, 'prnaddictionBot');
+	updateInfo(2000, false, 'prnaddictionBot').then( (data) => {
+		onPosting = data.onPosting;
+		postingInterval = data.postingInterval;
+		setInterval(autoPost, postingInterval);
+	} )
 
 };
+
+async function autoPost() {
+
+	if (onPosting) {
+
+		PostShema.findOne({
+			order: [ [ 'ID', 'DESC' ]]
+		}).then( (data) => {
+
+			console.log(data.name);
+	
+			let formData = new FormData();
+			formData.append('chat_id', channelId);
+			formData.append('photo', fs.createReadStream(path.join(__dirname, '/img/') + data.name + '.jpg'));
+			//formData.append('caption', namesOfPics[0]);
+
+			axios.post(`${telegramAPI}sendPhoto`, formData , {
+				headers: {
+					"Content-Type": "multipart/form-data; charset=UTF-8"
+				}
+			})
+
+		} )
+
+	}
+
+}
 
 //функция добавления пикч в очередь загрузки
 async function addDownloadQueue(msg) {
@@ -305,8 +340,9 @@ async function adminActions(msg) {
 				case kb.adminHome.info: {
 					getInfo(userAdmin);
 				} break;
-				case kb.adminHome.startStopPosting: {
-					//функция остановки, запуска постинга
+				case kb.adminHome.startStopPosting: {			
+					onPosting ? onPosting = false : onPosting = true;
+					updateInfo(postingInterval, onPosting, userAdmin.userName);
 				} break;
 				case kb.adminHome.adminMembersPics: {
 					//предложка
@@ -364,7 +400,7 @@ async function getInfo(userAdmin) {
 			bot.sendMessage(userAdmin.chatId, 
 			`постинг: ${ newData.onPosting ? 'исполняется' : 'остановлен'}
 			\nколичество постов в архиве: ${newData.countOfPost}
-			\nинтервал постинга: ${newData.postingInterval / 60000} мин
+			\nинтервал постинга: ${(newData.postingInterval / 60000).toFixed(2)} мин
 			\nпримерное время постинга: ${newData.estimatedPostingTime}`);
 
 		} )
