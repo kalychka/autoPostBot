@@ -353,7 +353,11 @@ async function adminActions(msg) {
 				} break;
 				case kb.adminHome.startStopPosting: {			
 					onPosting ? onPosting = false : onPosting = true;
-					updateInfo(postingInterval, onPosting, userAdmin.userName);
+					updateInfo(postingInterval, onPosting, userAdmin.userName).then( (data) => {
+						let autoPostingIs;
+						data.onPosting ? autoPostingIs = 'запущен' : autoPostingIs = 'остановлен';
+						bot.sendMessage(userAdmin.chatId, `авто постинг ${autoPostingIs}`);
+					} )
 				} break;
 				case kb.adminHome.adminMembersPics: {
 					//предложка
