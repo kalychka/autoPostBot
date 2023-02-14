@@ -8,7 +8,7 @@ const bot = new TelegramBot(token, {
     }
 });
 
-bot.setWebHook(`https://3c6b-178-46-110-167.eu.ngrok.io/bot${token}`);
+bot.setWebHook(`https://95be-31-162-127-181.eu.ngrok.io/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 

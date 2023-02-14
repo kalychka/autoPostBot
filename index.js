@@ -134,22 +134,33 @@ async function autoPost() {
 	if (onPosting) {
 
 		PostShema.findOne({
-			order: [ [ 'ID', 'DESC' ]]
+			order: [ [ 'ID' ]]
 		}).then( (data) => {
 
-			console.log(data.name);
+			if ( data instanceof PostShema ) {
+				let formData = new FormData();
+				formData.append('chat_id', channelId);
+				formData.append('photo', fs.createReadStream(path.join(__dirname, '/img/') + data.name + '.jpg'));
+				//formData.append('caption', namesOfPics[0]);
 	
-			let formData = new FormData();
-			formData.append('chat_id', channelId);
-			formData.append('photo', fs.createReadStream(path.join(__dirname, '/img/') + data.name + '.jpg'));
-			//formData.append('caption', namesOfPics[0]);
-
-			axios.post(`${telegramAPI}sendPhoto`, formData , {
-				headers: {
-					"Content-Type": "multipart/form-data; charset=UTF-8"
-				}
-			})
-
+				axios.post(`${telegramAPI}sendPhoto`, formData , {
+					headers: {
+						"Content-Type": "multipart/form-data; charset=UTF-8"
+					}
+				}).then( () => {
+	
+					fs.unlink(path.join(__dirname, '/img/') + data.name + '.jpg', (err => {
+						if (err) console.log(err);
+					}) );
+	
+					data.destroy();
+					
+				} )
+			} else {
+				onPosting = false;
+				updateInfo(postingInterval, false, 'prnaddictionBot');
+			}
+	
 		} )
 
 	}
@@ -411,10 +422,10 @@ async function getInfo(userAdmin) {
 async function updateInfo(postingInterval, onPosting, userName) {
 
 	let countOfPost = await PostShema.count();
-	let estimatedPostingTime = countOfPost * (postingInterval / 60000 ) + ' мин';
+	let estimatedPostingTime = (countOfPost * (postingInterval / 60000 )).toFixed(2) + ' мин';
 
 	if ( estimatedPostingTime > 60 ) {
-		estimatedPostingTime = estimatedPostingTime / 60 + ' часа';
+		estimatedPostingTime = (estimatedPostingTime / 60).toFixed(2) + ' часа';
 	};
 	
 	return (
