@@ -16,8 +16,16 @@ const PostShema = sequalize.define('post', {
     authorUserName: {type: DataTypes.STRING, allowNull: true},
 })
 
+const MemberPostShema = sequalize.define('memberPost', {
+    ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
+    name: {type: DataTypes.STRING},
+    chatId: {type: DataTypes.BIGINT},
+    authorUserName: {type: DataTypes.STRING, allowNull: true},
+})
+
 const DownloadQueueShema = sequalize.define('downloadQueue', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
+    messageId: {type: DataTypes.INTEGER},
     chatId: {type: DataTypes.BIGINT},
     name: {type: DataTypes.STRING},
     isAdmin: {type: DataTypes.BOOLEAN},
@@ -33,6 +41,7 @@ const InfoShema = sequalize.define('info', {
 })
 
 UserShema.hasMany(PostShema);
+UserShema.hasMany(MemberPostShema);
 UserShema.hasMany(DownloadQueueShema);
 
-module.exports = {UserShema, PostShema, DownloadQueueShema, InfoShema};
+module.exports = {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema};

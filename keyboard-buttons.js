@@ -8,7 +8,8 @@ module.exports = {
 		changeInterval: 'интервал'
 	},
 	userHome: {
-		offerPics: 'подтвердить'
+		startUpload: 'загрузить',
+		cancelUpload: 'удалить',
 	}
 
 	

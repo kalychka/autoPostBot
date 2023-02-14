@@ -18,7 +18,7 @@ const path = require('path');
 
 const download = require('download');
 
-const {UserShema, PostShema, DownloadQueueShema, InfoShema} = require('./models');
+const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema} = require('./models');
 
 const FormData = require('form-data');
 
@@ -112,7 +112,7 @@ async function start() {
 	});
 
 	//запуск админского диалога
-	bot.onText(/[инфо|on/off постинг|предложка]/, adminActions);
+	bot.onText(/[инфо|on/off постинг|предложка|интервал|предложка]/, adminActions);
 
 	//запуск прослушки пикч в диалоге
 	bot.on('photo', addDownloadQueue);
@@ -149,7 +149,7 @@ async function autoPost() {
 					}
 				}).then( () => {
 	
-					fs.unlink(path.join(__dirname, '/img/') + data.name + '.jpg', (err => {
+					fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
 						if (err) console.log(err);
 					}) );
 	
@@ -180,16 +180,16 @@ async function addDownloadQueue(msg) {
 			DownloadQueueShema.create({
 				chatId: msg.chat.id,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
-				isAdmin: true
+				isAdmin: true,
+				messageId: msg.message_id
 			});
 		} else {
 			DownloadQueueShema.create({
 				chatId: msg.chat.id,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
-				isAdmin: false
-			}).then( () => {
-				bot.sendMessage(msg.chat.id, 'посмотрел пикчи, отправить в предложку?');
-			} )
+				isAdmin: false,
+				messageId: msg.message_id
+			});
 		}
 
 	} )
@@ -203,27 +203,41 @@ function savePostFromQueue(msg) {
 
 	DownloadQueueShema.findAll({
 		where: {
-			chatId: msg.chat.id,
-			isAdmin: true
+			chatId: msg.chat.id
 		}
 	}).then( posts => {
 
 		if (msg.text == 'загрузить') {
 	
 			posts.forEach(element => {
-		
-				if (downloadPhoto(element)) {
-					namesOfDownloadPic.push(element.name);
-					element.destroy();
+
+				let postData = {
+					name: element.name,
+					isAdmin: element.isAdmin,
+				};
+
+				if ( element.isAdmin ) {
+					if (downloadPhoto(element, '/posts')) {
+						namesOfDownloadPic.push(postData);
+						element.destroy();
+					}
+				} else {
+					if (downloadPhoto(element, '/membersPosts')) {
+						namesOfDownloadPic.push(postData);
+						element.destroy();
+					}
 				}
-				
 			});
 			
 			if ( namesOfDownloadPic.length > 0 ) {
 							
 				namesOfDownloadPic.forEach( item => {
-	
-					createPostInDB(item, msg.chat.id, msg.from.first_name);
+
+					if ( item.isAdmin ) {
+						createPostInDB(item.name, msg.chat.id, msg.from.first_name, PostShema);
+					} else {
+						createPostInDB(item.name, msg.chat.id, msg.from.first_name, MemberPostShema);
+					}
 	
 				} )
 	
@@ -246,12 +260,11 @@ function savePostFromQueue(msg) {
 	
 		} else if ( msg.text == 'удалить' ) {
 
-			posts.forEach(element => element.destroy());
-	
-			for( i = msg.message_id - (2 + namesOfDownloadPic.length); i <= msg.message_id - 1; i++) {
-				bot.deleteMessage(msg.chat.id, i);			
-			};
-	
+			posts.forEach(element => {
+
+				bot.deleteMessage(msg.chat.id, element.messageId);
+				element.destroy()
+			});
 	
 			bot.sendMessage(msg.chat.id, 'хорошо, выбери что-то другое', {
 				reply_markup: {
@@ -387,7 +400,7 @@ function changePostingInterval(userAdmin) {
 }
 
 //сохраняет пикчи на диск
-async function downloadPhoto(element) {
+async function downloadPhoto(element, folder) {
 
 	return (
 		axios.post(`${telegramAPI}getFile`, {
@@ -400,7 +413,7 @@ async function downloadPhoto(element) {
 			let downloadLink = `https://api.telegram.org/file/bot` + `${token}` + `/${filePath}`;
 	
 			return (
-				download(downloadLink, path.join(__dirname, '/img'), {filename: `${fileName}.jpg`}).then( () => {
+				download(downloadLink, path.join(__dirname, folder), {filename: `${fileName}.jpg`}).then( () => {
 
 					return true;
 				})
@@ -412,9 +425,9 @@ async function downloadPhoto(element) {
 }
 
 //добавляет запись с постом в очередь постинга
-async function createPostInDB(name, chatId, authorUserName) {
+async function createPostInDB(name, chatId, authorUserName, Shema) {
 
-	await PostShema.create({
+	await Shema.create({
 		name: name,
 		chatId: chatId,
 		authorUserName: authorUserName
@@ -441,6 +454,7 @@ async function getInfo(userAdmin) {
 
 }
 
+//записывает инфу о боте в БД
 async function updateInfo(postingInterval, onPosting, userName) {
 
 	let countOfPost = await PostShema.count();

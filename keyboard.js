@@ -9,9 +9,6 @@ module.exports = {
 		[kb.adminHome.adminMembersPics, kb.adminHome.changeInterval]
 	],
 	userHome: [
-		[kb.userHome.offerPics]
+		[kb.userHome.startUpload, kb.userHome.cancelUpload]
 	]
-	
-
-
 }
