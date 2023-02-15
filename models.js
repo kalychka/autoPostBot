@@ -7,28 +7,44 @@ const UserShema = sequalize.define('user', {
     isAdmin: {type: DataTypes.BOOLEAN},
     firstName: {type: DataTypes.STRING},
     userName: {type: DataTypes.STRING},
+    ban: {type: DataTypes.BOOLEAN, defaultValue: false}
+},
+{
+    timestamps: false,
 })
 
 const PostShema = sequalize.define('post', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     name: {type: DataTypes.STRING},
-    chatId: {type: DataTypes.BIGINT},
+    //chatId: {type: DataTypes.BIGINT},
     authorUserName: {type: DataTypes.STRING, allowNull: true},
+},
+{
+    timestamps: false,
 })
 
 const MemberPostShema = sequalize.define('memberPost', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     name: {type: DataTypes.STRING},
-    chatId: {type: DataTypes.BIGINT},
+    //chatId: {type: DataTypes.BIGINT},
     authorUserName: {type: DataTypes.STRING, allowNull: true},
+    //busy: {type: DataTypes.BOOLEAN, defaultValue: false},
+    workInChatId: {type: DataTypes.BIGINT},
+    messageId: {type: DataTypes.INTEGER}
+},
+{
+    timestamps: false,
 })
 
 const DownloadQueueShema = sequalize.define('downloadQueue', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     messageId: {type: DataTypes.INTEGER},
-    chatId: {type: DataTypes.BIGINT},
+    //chatId: {type: DataTypes.BIGINT},
     name: {type: DataTypes.STRING},
     isAdmin: {type: DataTypes.BOOLEAN},
+},
+{
+    timestamps: false,
 })
 
 const InfoShema = sequalize.define('info', {

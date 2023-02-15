@@ -21,6 +21,8 @@ const download = require('download');
 const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema} = require('./models');
 
 const FormData = require('form-data');
+const { query } = require('./db.js');
+const { dirname } = require('path');
 
 let onPosting, postingInterval;
 
@@ -99,7 +101,14 @@ async function start() {
 					});
 				} else {
 					//отправка действий пользователя
-					bot.sendMessage(user.chatId, `сап, ${user.firstName}\n отправь пикчи, которые хочешь предложить`);
+					bot.sendMessage(user.chatId, `сап, ${user.firstName}\n отправь пикчи, которые хочешь предложить
+					\nесли фото личное, то напиши об этом в описании фото: такие фото нужно постить по одному
+					\nрандомпик можно отправлять альбомами`, {
+						reply_markup: {
+							keyboard: keyboard.userHome,
+							resize_keyboard: true
+						}
+					});
 				}
 			} else {
 				//если не узнал, то создает нового пользователя в БД
@@ -125,10 +134,119 @@ async function start() {
 		onPosting = data.onPosting;
 		postingInterval = data.postingInterval;
 		setInterval(autoPost, postingInterval);
-	} )
+	} );
+
+	//запуск прослушки действий с постами в предложке
+	bot.on('callback_query', memberPostsActions);
 
 };
 
+//обработка кнопок под постами в предложке
+function memberPostsActions(query) {
+
+	switch ( query.data ) {
+		case 'block': {
+
+			let chatId = query.message.chat.id;
+
+			MemberPostShema.findAll({
+				where: {
+					workInChatId: chatId
+				}
+			}).then( posts => {
+
+				posts.forEach( post => {
+					bot.deleteMessage(chatId, post.messageId);
+
+					fs.unlink(path.join(__dirname, '/membersPosts/') + post.name + '.jpg', (e) => {
+						console.log(e);
+						post.destroy();
+						post.save();
+					});
+					
+				} );
+
+				UserShema.findOne({
+					where: {
+						chatId: posts[0].userChatId
+					}
+				}).then( member => {
+					member.ban = true;
+					member.save().then( () => {
+						bot.answerCallbackQuery(query.id, `${member.firstName} заблокирован`);
+					} )
+				} )
+
+			} )		
+		} break;
+		case 'deleteAll': {
+
+			let chatId = query.message.chat.id;
+
+			MemberPostShema.findAll({
+				where: {
+					workInChatId: chatId
+				}
+			}).then( posts => {
+
+				posts.forEach( post => {
+					bot.deleteMessage(chatId, post.messageId);
+
+					fs.unlink(path.join(__dirname, '/membersPosts/') + post.name + '.jpg', (e) => {
+						console.log(e);
+						post.destroy();
+						post.save();
+					});
+					
+				} );
+				bot.answerCallbackQuery(query.id, 'посты удалены');
+			} )	
+
+		} break;
+		case 'delete': {
+
+			let chatId = query.message.chat.id;
+			let messageId = query.message.message_id;
+
+			MemberPostShema.findOne({
+				where: {
+					messageId: messageId
+				}
+			}).then( (post) => {
+
+				bot.deleteMessage(chatId, messageId);
+				post.destroy();
+				post.save();
+
+				bot.answerCallbackQuery(query.id, 'пост удален');
+			} )
+
+		} break;
+		case 'publish': {
+			
+			let chatId = query.message.chat.id;
+			let messageId = query.message.message_id;
+
+			MemberPostShema.findOne({
+				where: {
+					messageId: messageId
+				}
+			}).then( (post) => {
+
+				createPostInDB(post.name, post.userChatId, post.authorUserName, PostShema);
+				fs.rename( path.join(__dirname + '/membersPosts/') + post.name + '.jpg', path.join(__dirname + '/posts/') + post.name + '.jpg', () => {
+					bot.deleteMessage(chatId, post.messageId);
+					bot.answerCallbackQuery(query.id, 'добавлен в очередь постинга');
+					post.destroy();
+					post.save();
+				} )
+			} )
+		} break;
+	}
+
+}
+
+//функция автопостинга в канал
 async function autoPost() {
 
 	if (onPosting) {
@@ -178,14 +296,14 @@ async function addDownloadQueue(msg) {
 
 		if (  user.isAdmin ) {
 			DownloadQueueShema.create({
-				chatId: msg.chat.id,
+				userChatId: user.chatId,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
 				isAdmin: true,
 				messageId: msg.message_id
 			});
 		} else {
 			DownloadQueueShema.create({
-				chatId: msg.chat.id,
+				userChatId: user.chatId,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
 				isAdmin: false,
 				messageId: msg.message_id
@@ -203,7 +321,7 @@ function savePostFromQueue(msg) {
 
 	DownloadQueueShema.findAll({
 		where: {
-			chatId: msg.chat.id
+			userChatId: msg.chat.id
 		}
 	}).then( posts => {
 
@@ -364,12 +482,130 @@ async function adminActions(msg) {
 					changePostingInterval(userAdmin);
 				} break;
 				case kb.adminHome.adminMembersPics: {
-					//предложка
+					getPostsFromMembers(userAdmin);
+				} break;
+				case kb.adminBackMainMenu.mainMenu: {
+
+					MemberPostShema.findAll({
+						where: {
+							workInChatId: userAdmin.chatId
+						}
+					}).then( posts => {
+						
+						posts.forEach( row => {
+
+							bot.deleteMessage(userAdmin.chatId, row.messageId);
+							row.messageId = null;
+							row.workInChatId = null;
+							row.save();
+
+						} );
+						
+						bot.sendMessage(userAdmin.chatId, `предложка закрыта`, {
+							reply_markup: {
+								keyboard: keyboard.adminHome,
+								resize_keyboard: true
+							}
+						})
+					} )
+
 				} break;
 			}
 		}
 
 	} )
+}
+
+//получение постов из предложки
+function getPostsFromMembers(userAdmin) {
+
+	bot.sendMessage(userAdmin.chatId, `
+		\nв предложку добавляются посты от пользователей по очереди
+		\nесли они кончились - перезайди в предложку
+	`, {
+		reply_markup: {
+			keyboard: keyboard.adminBackMainMenu,
+			resize_keyboard: true
+		}
+	});
+
+	MemberPostShema.findOne({
+		order: [ [ 'ID' ]],
+		where: {
+			workInChatId: null
+		}
+	}).then( (post) => {
+
+		if ( post instanceof MemberPostShema ) {
+			MemberPostShema.findAll({
+				where: {
+					userChatId: post.userChatId,
+					workInChatId: null
+				}
+			}).then( (elements) => {
+	
+				UserShema.findOne({
+					where: {
+						chatId: post.userChatId
+					}
+				}).then( (memberInfo) => {
+					elements.forEach( (memberPost) => {
+	
+						bot.sendPhoto(userAdmin.chatId, path.join(__dirname, `/membersPosts/${memberPost.name}.jpg`), {
+							headers: {
+								"Content-Type": "multipart/form-data"
+							},
+							reply_markup: {
+								inline_keyboard: [
+									[
+										{
+											text: '✅',
+											callback_data: 'publish',
+											row_width: 1
+										},
+										{
+											text: '🚫',
+											callback_data: 'delete',
+											row_width: 2
+										},
+									],
+									[
+										{
+											text: 'B A N',
+											callback_data: 'block',
+		
+										},
+										{
+											text: '🗑 all',
+											callback_data: 'deleteAll'
+										}
+									]
+								]
+							},
+							caption: `[👤 ${memberInfo.firstName}](https://t.me/${memberInfo.userName})`,
+							parse_mode: 'MarkdownV2'
+		
+						}).then( (msg) => {
+							memberPost.messageId = msg.message_id;
+							memberPost.workInChatId = userAdmin.chatId;
+							memberPost.save();
+						} )
+		
+					} )
+				} )
+	
+			} )
+		} else {
+			bot.sendMessage(userAdmin.chatId, 'предложка пуста', {
+				reply_markup: {
+					keyboard: keyboard.adminHome,
+					resize_keyboard: true
+				}
+			})
+		}
+
+	} )
+
 }
 
 //изменяет интервал постинга
@@ -424,12 +660,12 @@ async function downloadPhoto(element, folder) {
 	
 }
 
-//добавляет запись с постом в очередь постинга
+//добавляет запись с постом в очередь постинга либо в предложку
 async function createPostInDB(name, chatId, authorUserName, Shema) {
 
 	await Shema.create({
 		name: name,
-		chatId: chatId,
+		userChatId: chatId,
 		authorUserName: authorUserName
 	})
 }

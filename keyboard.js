@@ -8,6 +8,9 @@ module.exports = {
 		[kb.adminHome.info, kb.adminHome.startStopPosting],
 		[kb.adminHome.adminMembersPics, kb.adminHome.changeInterval]
 	],
+	adminBackMainMenu: [
+		[kb.adminBackMainMenu.mainMenu]
+	],
 	userHome: [
 		[kb.userHome.startUpload, kb.userHome.cancelUpload]
 	]

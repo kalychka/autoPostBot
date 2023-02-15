@@ -7,6 +7,9 @@ module.exports = {
 		adminMembersPics: 'предложка',
 		changeInterval: 'интервал'
 	},
+	adminBackMainMenu: {
+		mainMenu: 'назад'
+	},
 	userHome: {
 		startUpload: 'загрузить',
 		cancelUpload: 'удалить',
