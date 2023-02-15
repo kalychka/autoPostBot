@@ -100,15 +100,20 @@ async function start() {
 						}
 					});
 				} else {
-					//отправка действий пользователя
-					bot.sendMessage(user.chatId, `сап, ${user.firstName}\n отправь пикчи, которые хочешь предложить
-					\nесли фото личное, то напиши об этом в описании фото: такие фото нужно постить по одному
-					\nрандомпик можно отправлять альбомами`, {
-						reply_markup: {
-							keyboard: keyboard.userHome,
-							resize_keyboard: true
-						}
-					});
+
+					if ( user.ban ) {
+						bot.sendMessage(user.chatId, 'отправка пикч ограничена');
+					} else {
+						//отправка действий пользователя
+						bot.sendMessage(user.chatId, `\nсап, ${user.firstName}\nотправь пикчи, которые хочешь предложить
+						\nесли фото личное, то напиши об этом в описании фото: такие фото нужно постить по одному
+						\nрандомпик можно отправлять альбомами`, {
+							reply_markup: {
+								keyboard: keyboard.userHome,
+								resize_keyboard: true
+							}
+						});
+					}
 				}
 			} else {
 				//если не узнал, то создает нового пользователя в БД
@@ -301,7 +306,7 @@ async function addDownloadQueue(msg) {
 				isAdmin: true,
 				messageId: msg.message_id
 			});
-		} else {
+		} else if ( !user.ban ) {
 			DownloadQueueShema.create({
 				userChatId: user.chatId,
 				name: msg.photo[ msg.photo.length - 1 ].file_id,
@@ -353,28 +358,18 @@ function savePostFromQueue(msg) {
 
 					if ( item.isAdmin ) {
 						createPostInDB(item.name, msg.chat.id, msg.from.first_name, PostShema);
+						
 					} else {
 						createPostInDB(item.name, msg.chat.id, msg.from.first_name, MemberPostShema);
 					}
 	
 				} )
-	
-				bot.sendMessage(msg.chat.id, `загружено ${namesOfDownloadPic.length}`, {
-					reply_markup: {
-						keyboard: keyboard.adminHome,
-						resize_keyboard: true
-					}
-				}).then( () => namesOfDownloadPic = []);
-	
+
+				bot.sendMessage(msg.chat.id, `💾 ${namesOfDownloadPic.length}`).then( () => namesOfDownloadPic = []);
 	
 			} else {
-				bot.sendMessage(msg.chat.id, 'что-то пошло не так', {
-					reply_markup: {
-						keyboard: keyboard.adminHome,
-						resize_keyboard: true
-					}
-				}).then( () => namesOfDownloadPic = [] );
-			}
+				bot.sendMessage(msg.chat.id, 'что-то пошло не так').then( () => namesOfDownloadPic = [] );
+			};
 	
 		} else if ( msg.text == 'удалить' ) {
 
@@ -384,12 +379,7 @@ function savePostFromQueue(msg) {
 				element.destroy()
 			});
 	
-			bot.sendMessage(msg.chat.id, 'хорошо, выбери что-то другое', {
-				reply_markup: {
-					keyboard: keyboard.adminHome,
-					resize_keyboard: true
-				}
-			}).then( () => namesOfDownloadPic = [] );
+			bot.sendMessage(msg.chat.id, 'хорошо, выбери что-то другое').then( () => namesOfDownloadPic = [] );
 			
 		}
 	} )
