@@ -1,19 +1,13 @@
 module.exports = {
 	adminHome: {
-		startUpload: '✅ загрузить',
-		cancelUpload: '🚫 удалить',
+		//startUpload: '✅ загрузить',
+		//cancelUpload: '🚫 удалить',
 		info: 'ℹ️ инфо',
 		startStopPosting: '🕹 on/off постинг',
 		adminMembersPics: '🌁 предложка',
 		changeInterval: '📊 интервал'
 	},
 	adminBackMainMenu: {
-		mainMenu: '🔙 назад'
-	},
-	userHome: {
-		startUpload: '✅загрузить',
-		cancelUpload: '🚫удалить',
+		mainMenu: 'назад'
 	}
-
-	
 }

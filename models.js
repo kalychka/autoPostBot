@@ -18,6 +18,7 @@ const PostShema = sequalize.define('post', {
     name: {type: DataTypes.STRING},
     //chatId: {type: DataTypes.BIGINT},
     authorUserName: {type: DataTypes.STRING, allowNull: true},
+    exclusive: {type: DataTypes.BOOLEAN}
 },
 {
     timestamps: false,
@@ -30,7 +31,8 @@ const MemberPostShema = sequalize.define('memberPost', {
     authorUserName: {type: DataTypes.STRING, allowNull: true},
     //busy: {type: DataTypes.BOOLEAN, defaultValue: false},
     workInChatId: {type: DataTypes.BIGINT},
-    messageId: {type: DataTypes.INTEGER}
+    messageId: {type: DataTypes.INTEGER},
+    exclusive: {type: DataTypes.BOOLEAN}
 },
 {
     timestamps: false,
@@ -59,5 +61,6 @@ const InfoShema = sequalize.define('info', {
 UserShema.hasMany(PostShema);
 UserShema.hasMany(MemberPostShema);
 UserShema.hasMany(DownloadQueueShema);
+DownloadQueueShema.belongsTo(UserShema);
 
 module.exports = {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema};
