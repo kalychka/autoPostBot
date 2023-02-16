@@ -21,10 +21,11 @@ const download = require('download');
 const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema} = require('./models');
 
 const FormData = require('form-data');
+
 const { query } = require('./db.js');
 const { dirname } = require('path');
 
-let onPosting, postingInterval;
+let onPosting, postingInterval, postingTimerID;
 
 
 class User {
@@ -135,10 +136,9 @@ async function start() {
 	bot.onText(/[загрузить|удалить]/, savePostFromQueue); 
 
 	//запись в логи бота
-	updateInfo(120000, false, 'prnaddictionBot').then( (data) => {
+	updateInfo(1000, false, 'prnaddictionBot').then( (data) => {
 		onPosting = data.onPosting;
 		postingInterval = data.postingInterval;
-		setInterval(autoPost, postingInterval);
 	} );
 
 	//запуск прослушки действий с постами в предложке
@@ -254,40 +254,44 @@ function memberPostsActions(query) {
 //функция автопостинга в канал
 async function autoPost() {
 
-	if (onPosting) {
+	console.log('Posting ON, postingInterval: ', postingInterval);
 
-		PostShema.findOne({
-			order: [ [ 'ID' ]]
-		}).then( (data) => {
+	//if (onPosting) {
 
-			if ( data instanceof PostShema ) {
-				let formData = new FormData();
-				formData.append('chat_id', channelId);
-				formData.append('photo', fs.createReadStream(path.join(__dirname, '/img/') + data.name + '.jpg'));
-				//formData.append('caption', namesOfPics[0]);
+		
+
+		// PostShema.findOne({
+		// 	order: [ [ 'ID' ]]
+		// }).then( (data) => {
+
+		// 	if ( data instanceof PostShema ) {
+		// 		let formData = new FormData();
+		// 		formData.append('chat_id', channelId);
+		// 		formData.append('photo', fs.createReadStream(path.join(__dirname, '/posts/') + data.name + '.jpg'));
+		// 		//formData.append('caption', namesOfPics[0]);
 	
-				axios.post(`${telegramAPI}sendPhoto`, formData , {
-					headers: {
-						"Content-Type": "multipart/form-data; charset=UTF-8"
-					}
-				}).then( () => {
+		// 		axios.post(`${telegramAPI}sendPhoto`, formData , {
+		// 			headers: {
+		// 				"Content-Type": "multipart/form-data; charset=UTF-8"
+		// 			}
+		// 		}).then( () => {
 	
-					fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
-						if (err) console.log(err);
-					}) );
+		// 			fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
+		// 				if (err) console.log(err);
+		// 			}) );
 	
-					data.destroy();
+		// 			data.destroy();
 					
-				} )
-			} else {
-				onPosting = false;
-				updateInfo(postingInterval, false, 'prnaddictionBot');
-			}
+		// 		} )
+		// 	} else {
+		// 		onPosting = false;
+		// 		updateInfo(postingInterval, false, 'prnaddictionBot');
+		// 	}
 	
-		} )
+		// } )
 
-	}
-
+	//}
+	
 }
 
 //функция добавления пикч в очередь загрузки
@@ -458,15 +462,26 @@ async function adminActions(msg) {
 
 			switch ( message ) {
 				case kb.adminHome.info: {
-					getInfo(userAdmin);
+					updateInfo(postingInterval, onPosting, userAdmin.userName).then( data => {
+						bot.sendMessage(userAdmin.chatId, 
+							`постинг: ${ data.onPosting ? 'исполняется' : 'остановлен'}
+							\nколичество постов в архиве: ${data.countOfPost}
+							\nинтервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
+							\nпримерное время постинга: ${data.estimatedPostingTime}`);
+					} );
 				} break;
 				case kb.adminHome.startStopPosting: {			
-					onPosting ? onPosting = false : onPosting = true;
-					updateInfo(postingInterval, onPosting, userAdmin.userName).then( (data) => {
-						let autoPostingIs;
-						data.onPosting ? autoPostingIs = 'запущен' : autoPostingIs = 'остановлен';
-						bot.sendMessage(userAdmin.chatId, `авто постинг ${autoPostingIs}`);
-					} )
+
+					startStopPosting(userAdmin).then( data => {
+						if (data instanceof InfoShema) {
+							let autoPostingIs;
+
+							data.onPosting ? autoPostingIs = 'запущен' : autoPostingIs = 'остановлен';
+							
+							bot.sendMessage(userAdmin.chatId, `автопостинг ${autoPostingIs}`);
+						}
+					})
+
 				} break;
 				case kb.adminHome.changeInterval: {
 					changePostingInterval(userAdmin);
@@ -510,8 +525,8 @@ async function adminActions(msg) {
 function getPostsFromMembers(userAdmin) {
 
 	bot.sendMessage(userAdmin.chatId, `
-		\nв предложку добавляются посты от пользователей по очереди
-		\nесли они кончились - перезайди в предложку
+		\n👤 в предложку добавляются посты от пользователей по очереди
+		\n🌁 если они кончились - перезайди в предложку
 	`, {
 		reply_markup: {
 			keyboard: keyboard.adminBackMainMenu,
@@ -586,7 +601,7 @@ function getPostsFromMembers(userAdmin) {
 	
 			} )
 		} else {
-			bot.sendMessage(userAdmin.chatId, 'предложка пуста', {
+			bot.sendMessage(userAdmin.chatId, '📤 предложка пуста', {
 				reply_markup: {
 					keyboard: keyboard.adminHome,
 					resize_keyboard: true
@@ -607,17 +622,25 @@ function changePostingInterval(userAdmin) {
 
 			if ( msg.text != 0 ) {
 
-				updateInfo(msg.text, onPosting, userAdmin.userName).then( (data) => {
+				let newInterval = msg.text * 60000;
+
+				updateInfo(newInterval, onPosting, userAdmin.userName).then( (data) => {
 
 					if ( data instanceof InfoShema) {
 
-						bot.sendMessage(userAdmin.chatId, `интервал изменен: ${data.postingInterval} мин
+						postingInterval = data.postingInterval;
+
+						if ( onPosting ) {
+							clearInterval(postingTimerID);
+							postingTimerID = setInterval(autoPost, postingInterval);
+						}
+
+						bot.sendMessage(userAdmin.chatId, `интервал изменен: ${data.postingInterval / 60000} мин
 						\nпользователь: @${data.userName}`);
 
 					}
 
 				} )
-
 			}
 
 		})
@@ -660,27 +683,21 @@ async function createPostInDB(name, chatId, authorUserName, Shema) {
 	})
 }
 
-//постит информацию о боте
-async function getInfo(userAdmin) {
+function startStopPosting(userAdmin) {
 
-	InfoShema.findOne({
-		order: [ [ 'ID', 'DESC' ]]
-	}).then( data => {
-		
-		updateInfo(data.postingInterval, data.onPosting, userAdmin.userName).then( (newData) => {
-			
-			bot.sendMessage(userAdmin.chatId, 
-			`постинг: ${ newData.onPosting ? 'исполняется' : 'остановлен'}
-			\nколичество постов в архиве: ${newData.countOfPost}
-			\nинтервал постинга: ${(newData.postingInterval / 60000).toFixed(2)} мин
-			\nпримерное время постинга: ${newData.estimatedPostingTime}`);
+	onPosting ? onPosting = false : onPosting = true;
 
-		} )
-	})
+	if ( onPosting ) {
+		postingTimerID = setInterval(autoPost, postingInterval);
+	} else {
+		clearInterval(postingTimerID);
+	}
 
-}
+	return updateInfo(postingInterval, onPosting, userAdmin.userName)
 
-//записывает инфу о боте в БД
+};
+
+//записывает инфу о боте в БД и отдает результат
 async function updateInfo(postingInterval, onPosting, userName) {
 
 	let countOfPost = await PostShema.count();
@@ -689,7 +706,7 @@ async function updateInfo(postingInterval, onPosting, userName) {
 	//примерное время постинга, учитывая кол-во постов
 
 	//подсчет в минутах
-	estimatedPostingTime = ((postingInterval / 60000) * countOfPost).toFixed(2);
+	estimatedPostingTime = ((postingInterval * 60000) * countOfPost).toFixed(2);
 
 	if ( estimatedPostingTime >= 60 ) {
 		let hours = Math.trunc(estimatedPostingTime/60);
