@@ -126,7 +126,7 @@ async function start() {
 	bot.on('photo', addDownloadQueue);
 
 	//запись в логи бота
-	updateInfo(1000, false, 'prnaddictionBot').then( (data) => {
+	updateInfo(60000, false, 'prnaddictionBot').then( (data) => {
 		onPosting = data.onPosting;
 		postingInterval = data.postingInterval;
 	} );
@@ -245,45 +245,55 @@ function memberPostsActions(query) {
 }
 
 //функция автопостинга в канал
-async function autoPost() {
+async function autoPost() { 
 
-	console.log('Posting ON, postingInterval: ', postingInterval);
+	if (onPosting) {
 
-	//if (onPosting) {
+		console.log('Posting ON, postingInterval: ', postingInterval);
 
-		
+		PostShema.findOne({
+			order: [ [ 'ID' ]]
+		}).then( (data) => {
 
-		// PostShema.findOne({
-		// 	order: [ [ 'ID' ]]
-		// }).then( (data) => {
+			if ( data instanceof PostShema ) {
 
-		// 	if ( data instanceof PostShema ) {
-		// 		let formData = new FormData();
-		// 		formData.append('chat_id', channelId);
-		// 		formData.append('photo', fs.createReadStream(path.join(__dirname, '/posts/') + data.name + '.jpg'));
-		// 		//formData.append('caption', namesOfPics[0]);
+				let formData = new FormData();
+
+				formData.append('chat_id', channelId);
+				
+				formData.append('photo', fs.createReadStream(path.join(__dirname, '/posts/') + data.name + '.jpg'));
+				
+				if ( data.exclusive ) {
+					formData.append('caption', '#exclusive');
+				};
 	
-		// 		axios.post(`${telegramAPI}sendPhoto`, formData , {
-		// 			headers: {
-		// 				"Content-Type": "multipart/form-data; charset=UTF-8"
-		// 			}
-		// 		}).then( () => {
+				axios.post(`${telegramAPI}sendPhoto`, formData , {
+					headers: {
+						"Content-Type": "multipart/form-data; charset=UTF-8"
+					}
+				}).then( () => {
 	
-		// 			fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
-		// 				if (err) console.log(err);
-		// 			}) );
+					fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
+						if (err) console.log(err);
+					}) );
 	
-		// 			data.destroy();
+					data.destroy();
 					
-		// 		} )
-		// 	} else {
-		// 		onPosting = false;
-		// 		updateInfo(postingInterval, false, 'prnaddictionBot');
-		// 	}
-	
-		// } )
+				} ).catch( () => {
+					
+					console.log('pic not found: ', data.name);
+					data.destroy();
+					autoPost();
+				} )
 
-	//}
+			} else {
+
+				startStopPosting();
+			}
+	
+		} )
+
+	}
 	
 }
 
@@ -316,15 +326,20 @@ async function addDownloadQueue(msg) {
 										callback_data: 'confirmPost'
 									},
 									{
-										text: '🚫',
-										callback_data: 'deletePost'
+										text: '✅ all',
+										callback_data: 'confirmAllPost'
 									},
-								],
-								[
 									{
 										text: '🔥',
 										callback_data: 'confirmAsExclusivePost',
 	
+									},
+
+								],
+								[
+									{
+										text: '🚫',
+										callback_data: 'deletePost'
 									},
 									{
 										text: '🗑 all',
@@ -336,9 +351,9 @@ async function addDownloadQueue(msg) {
 						formData.append('chat_id', user.chatId);
 						formData.append('photo',  data.name);
 						formData.append('reply_markup', JSON.stringify(uploadKeyboard));
-						formData.append('caption', `\n✅ - загрузить, 🚫 - удалить
-						\n🔥 - загрузить как личное фото,
-						\n🗑 all - удалить все фото`);
+						formData.append('caption', `\n✅ - загрузить, ✅all - загрузить все 
+						\n🔥 - загрузить как личное фото
+						\n🚫 - удалить, 🗑all - удалить все фото `);
 	
 						axios.post(`${telegramAPI}sendPhoto`, formData, {
 							headers: {
@@ -387,22 +402,82 @@ function savePostFromQueue(query) {
 						}
 					}).then( authorPost => {
 
-						if ( authorPost.isAdmin ) {
-							downloadPhoto(data, '/posts').then( () => {
-								createPostInDB(data.name, data.userChatId, authorPost.userName, PostShema);
-							} );
-						} else {
-							downloadPhoto(data, '/membersPosts').then( () => {
-								createPostInDB(data.name, data.userChatId, authorPost.userName, MemberPostShema);
-							} );
-						}
-						bot.deleteMessage(chatId, data.messageId);
-						bot.answerCallbackQuery(query.id, '💾 пост сохранен >8');
+						let picPath;
+						let postShema;
+
+						authorPost.isAdmin ? picPath = '/posts' : picPath = '/membersPosts';
+						authorPost.isAdmin ? postShema = PostShema : postShema = MemberPostShema;
+
+						downloadPhoto(data, picPath).then( () => {
+							createPostInDB(data.name, data.userChatId, authorPost.userName, postShema);
+							bot.editMessageCaption('💾 загружено', {
+								chat_id: chatId,
+								message_id: data.messageId
+							});
+							bot.answerCallbackQuery(query.id, '💾 пост сохранен >8');
+						} ).catch( () => {
+							bot.editMessageCaption('не удалось, попробуй еще раз', {
+								chat_id: chatId,
+								message_id: data.messageId
+							});
+						} )
+						 
 						data.destroy();
 						data.save();
 					} )
 				}
 			} )
+		} break;
+		case 'confirmAllPost': {
+
+			let chatId = query.message.chat.id;
+
+			UserShema.findOne({
+				where: {
+					chatId: chatId
+				}
+			}).then( user => {
+
+				DownloadQueueShema.findAll({
+					where: {
+						userChatId: user.chatId
+					}
+				}).then( data => {
+	
+					data.forEach( item => {
+
+						if (item instanceof DownloadQueueShema) {
+	
+							let picPath;
+							let postShema;
+	
+							user.isAdmin ? picPath = '/posts' : picPath = '/membersPosts';
+							user.isAdmin ? postShema = PostShema : postShema = MemberPostShema;
+	
+							downloadPhoto(item, picPath).then( () => {
+								createPostInDB(item.name, item.userChatId, user.userName, postShema);
+								bot.editMessageCaption('💾 загружено', {
+									chat_id: user.chatId,
+									message_id: item.messageId
+								});
+								
+							} ).catch( () => {
+								bot.editMessageCaption('не удалось, попробуй еще раз', {
+									chat_id: user.chatId,
+									message_id: item.messageId
+								});
+							} )
+								
+							item.destroy();
+							item.save();
+							
+						}
+					} )
+	
+				} )
+			} )
+
+			
 		} break;
 		case 'deletePost': {
 			let chatId = query.message.chat.id;
@@ -420,7 +495,6 @@ function savePostFromQueue(query) {
 					bot.deleteMessage(chatId, data.messageId);
 					data.destroy();
 					data.save();
-				
 				}
 			} )
 		} break;
@@ -443,17 +517,26 @@ function savePostFromQueue(query) {
 						}
 					}).then( authorPost => {
 
-						if ( authorPost.isAdmin ) {
-							downloadPhoto(data, '/posts').then( () => {
-								createPostInDB(data.name, data.userChatId, authorPost.userName, PostShema, true);
-							} );
-						} else {
-							downloadPhoto(data, '/membersPosts').then( () => {
-								createPostInDB(data.name, data.userChatId, authorPost.userName, MemberPostShema, true);
-							} );
-						}
-						bot.answerCallbackQuery(query.id, '🔥 пост отправлен с пометкой эксклюзив');
-						bot.deleteMessage(chatId, data.messageId);
+						let picPath;
+						let postShema;
+
+						authorPost.isAdmin ? picPath = '/posts' : picPath = '/membersPosts';
+						authorPost.isAdmin ? postShema = PostShema : postShema = MemberPostShema;
+
+						downloadPhoto(data, picPath).then( () => {
+							createPostInDB(data.name, data.userChatId, authorPost.userName, postShema, true);
+							bot.editMessageCaption('💾 загружено как 🔥 пост', {
+								chat_id: chatId,
+								message_id: data.messageId
+							});
+							bot.answerCallbackQuery(query.id, '🔥 пост отправлен с пометкой эксклюзив');
+						} ).catch( () => {
+							bot.editMessageCaption('не удалось, попробуй еще раз', {
+								chat_id: chatId,
+								message_id: data.messageId
+							});
+						} )
+
 						data.destroy();
 						data.save();
 					} )
@@ -573,10 +656,11 @@ async function adminActions(msg) {
 				case kb.adminHome.info: {
 					updateInfo(postingInterval, onPosting, userAdmin.userName).then( data => {
 						bot.sendMessage(userAdmin.chatId, 
-							`постинг: ${ data.onPosting ? 'исполняется' : 'остановлен'}
-							\nколичество постов в архиве: ${data.countOfPost}
-							\nинтервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
-							\nпримерное время постинга: ${data.estimatedPostingTime}`);
+							`🕹 постинг: ${ data.onPosting ? 'исполняется' : 'остановлен'}
+							\n🌇 постов в очереди постинга: ${data.countOfPost}
+							\n🔮 постов в предложке: ${data.countOfMembersPost}
+							\n📊 интервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
+							\n⏳ примерное время постинга: ${data.estimatedPostingTime}`);
 					} );
 				} break;
 				case kb.adminHome.startStopPosting: {			
@@ -633,16 +717,6 @@ async function adminActions(msg) {
 //получение постов из предложки
 function getPostsFromMembers(userAdmin) {
 
-	bot.sendMessage(userAdmin.chatId, `
-		\n👤 в предложку добавляются посты от пользователей по очереди
-		\n🌁 если они кончились - перезайди в предложку
-	`, {
-		reply_markup: {
-			keyboard: keyboard.adminBackMainMenu,
-			resize_keyboard: true
-		}
-	});
-
 	MemberPostShema.findOne({
 		order: [ [ 'ID' ]],
 		where: {
@@ -651,6 +725,17 @@ function getPostsFromMembers(userAdmin) {
 	}).then( (post) => {
 
 		if ( post instanceof MemberPostShema ) {
+
+			bot.sendMessage(userAdmin.chatId, `
+			\n👤 в предложку добавляются посты от пользователей по очереди
+			\n🌁 если они кончились - перезайди в предложку
+			`, {
+				reply_markup: {
+					keyboard: keyboard.adminBackMainMenu,
+					resize_keyboard: true
+				}
+			});
+
 			MemberPostShema.findAll({
 				where: {
 					userChatId: post.userChatId,
@@ -744,7 +829,7 @@ function changePostingInterval(userAdmin) {
 		bot.onText(/[1-9]/, (msg) => {
 			bot.removeTextListener(/[1-9]/);
 
-			if ( msg.text != 0 ) {
+			if ( msg.text >= 1 ) {
 
 				let newInterval = msg.text * 60000;
 
@@ -802,7 +887,7 @@ async function createPostInDB(name, chatId, authorUserName, Shema, exclusive = f
 	})
 }
 
-function startStopPosting(userAdmin) {
+function startStopPosting(userAdmin = {userName: '@prnaddictionBot'}) {
 
 	onPosting ? onPosting = false : onPosting = true;
 
@@ -820,12 +905,13 @@ function startStopPosting(userAdmin) {
 async function updateInfo(postingInterval, onPosting, userName) {
 
 	let countOfPost = await PostShema.count();
+	let countOfMembersPost = await MemberPostShema.count();
 	let estimatedPostingTime;
 
 	//примерное время постинга, учитывая кол-во постов
 
 	//подсчет в минутах
-	estimatedPostingTime = ((postingInterval * 60000) * countOfPost).toFixed(2);
+	estimatedPostingTime = ((postingInterval / 60000) * countOfPost).toFixed(2);
 
 	if ( estimatedPostingTime >= 60 ) {
 		let hours = Math.trunc(estimatedPostingTime/60);
@@ -840,6 +926,7 @@ async function updateInfo(postingInterval, onPosting, userName) {
 	return (
 		InfoShema.create({
 			countOfPost: countOfPost,
+			countOfMembersPost: countOfMembersPost,
 			postingInterval: postingInterval,
 			estimatedPostingTime: estimatedPostingTime,
 			onPosting: onPosting,

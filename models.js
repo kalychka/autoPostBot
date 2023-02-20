@@ -52,6 +52,7 @@ const DownloadQueueShema = sequalize.define('downloadQueue', {
 const InfoShema = sequalize.define('info', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     countOfPost: {type: DataTypes.INTEGER},
+    countOfMembersPost: {type: DataTypes.INTEGER},
     postingInterval: {type: DataTypes.FLOAT},
     estimatedPostingTime: {type: DataTypes.STRING},
     onPosting: {type: DataTypes.BOOLEAN},

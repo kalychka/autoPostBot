@@ -4,11 +4,11 @@ const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
 
 const bot = new TelegramBot(token, {
     webHook: {
-        port:80
+        port:3000
     }
 });
 
-bot.setWebHook(`https://d545-31-162-127-181.eu.ngrok.io/bot${token}`);
+bot.setWebHook(`https://0e36-31-162-127-181.eu.ngrok.io/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
