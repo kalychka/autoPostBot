@@ -4,7 +4,7 @@ const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
 
 const bot = new TelegramBot(token, {
     webHook: {
-        port:3000
+        port:80
     }
 });
 
