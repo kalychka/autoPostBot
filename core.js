@@ -3,12 +3,13 @@ const TelegramBot = require('node-telegram-bot-api');
 const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
 
 const bot = new TelegramBot(token, {
-    webHook: {
-        port:80
-    }
+    // webHook: {
+    //     port:80
+    // }
+    polling: true
 });
 
-bot.setWebHook(`https://94.26.224.172/bot${token}`);
+//bot.setWebHook(`https://94.26.224.172/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
