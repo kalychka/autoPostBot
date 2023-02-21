@@ -16,7 +16,6 @@ const UserShema = sequalize.define('user', {
 const PostShema = sequalize.define('post', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     name: {type: DataTypes.STRING},
-    //chatId: {type: DataTypes.BIGINT},
     authorUserName: {type: DataTypes.STRING, allowNull: true},
     exclusive: {type: DataTypes.BOOLEAN}
 },
@@ -27,9 +26,7 @@ const PostShema = sequalize.define('post', {
 const MemberPostShema = sequalize.define('memberPost', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     name: {type: DataTypes.STRING},
-    //chatId: {type: DataTypes.BIGINT},
     authorUserName: {type: DataTypes.STRING, allowNull: true},
-    //busy: {type: DataTypes.BOOLEAN, defaultValue: false},
     workInChatId: {type: DataTypes.BIGINT},
     messageId: {type: DataTypes.INTEGER},
     exclusive: {type: DataTypes.BOOLEAN}
@@ -41,7 +38,6 @@ const MemberPostShema = sequalize.define('memberPost', {
 const DownloadQueueShema = sequalize.define('downloadQueue', {
     ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
     messageId: {type: DataTypes.INTEGER},
-    //chatId: {type: DataTypes.BIGINT},
     name: {type: DataTypes.STRING},
     isAdmin: {type: DataTypes.BOOLEAN},
 },

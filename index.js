@@ -8,6 +8,8 @@ const {
 
 const keyboard = require('./keyboard');
 
+const inlineKeyboard = require('./inlineKeyboard');
+
 const kb = require('./keyboard-buttons');
 
 const axios = require('axios');
@@ -103,7 +105,7 @@ async function start() {
 				} else {
 
 					if ( user.ban ) {
-						bot.sendMessage(user.chatId, 'отправка пикч ограничена');
+						bot.sendMessage(user.chatId, 'отправка сообщений ограничена');
 					} else {
 						//отправка действий пользователя
 						bot.sendMessage(user.chatId, `\nсап, ${user.firstName}\nотправь пикчи, которые хочешь предложить`);
@@ -120,7 +122,7 @@ async function start() {
 	});
 
 	//запуск админского диалога
-	bot.onText(/[инфо|on/off постинг|предложка|интервал|предложка|еще]/, adminActions);
+	bot.onText(/[инфо|on/off постинг|предложка|интервал|предложка]/, adminActions);
 
 	//запуск прослушки пикч в диалоге
 	bot.on('photo', addDownloadQueue);
@@ -143,7 +145,58 @@ async function start() {
 function memberPostsActions(query) {
 
 	switch ( query.data ) {
+		case 'memberPostMainMenu': {
+
+			MemberPostShema.findOne({
+				where: {
+					messageId: query.message.message_id,
+					workInChatId: query.message.chat.id
+				}
+			}).then( (post) => {
+
+				UserShema.findOne({
+					where: {
+						chatId: post.userChatId
+					}
+				}).then( (authorPost) => {
+
+					let caption;
+
+					if ( post.exclusive ) {
+
+						caption = `[👤 ${authorPost.firstName}](https://t.me/${authorPost.userName})
+						\n🔥 exclusive`
+
+					} else {
+						caption = `[👤 ${authorPost.firstName}](https://t.me/${authorPost.userName})`
+					}
+
+					bot.editMessageCaption(caption, {
+						chat_id: query.message.chat.id,
+						message_id: query.message.message_id,
+						reply_markup: {
+							inline_keyboard: inlineKeyboard.memberPosts
+						},
+						parse_mode: 'MarkdownV2'
+					});
+
+				} )
+
+			} )
+
+		} break;
 		case 'blockMemberPost': {
+
+			bot.editMessageCaption('заблокировать пользователя и удалить все его посты из предложки?', {
+				chat_id: query.message.chat.id,
+				message_id: query.message.message_id,
+				reply_markup: {
+					inline_keyboard: inlineKeyboard.memberPostsBack
+				}
+			});
+
+		} break;
+		case 'blockMemberPostConfirm': {
 
 			let chatId = query.message.chat.id;
 
@@ -175,9 +228,21 @@ function memberPostsActions(query) {
 					} )
 				} )
 
-			} )		
+			} )	
+
 		} break;
 		case 'deleteAllMemberPost': {
+
+			bot.editMessageCaption('удалить все его посты из предложки?', {
+				chat_id: query.message.chat.id,
+				message_id: query.message.message_id,
+				reply_markup: {
+					inline_keyboard: inlineKeyboard.memberPostsBack
+				}
+			});
+
+		} break;
+		case 'deleteAllMemberPostConfirm': {
 
 			let chatId = query.message.chat.id;
 
@@ -264,7 +329,7 @@ async function autoPost() {
 				formData.append('photo', fs.createReadStream(path.join(__dirname, '/posts/') + data.name + '.jpg'));
 				
 				if ( data.exclusive ) {
-					formData.append('caption', '#exclusive');
+					formData.append('caption', '#эксклюзив');
 				};
 	
 				axios.post(`${telegramAPI}sendPhoto`, formData , {
@@ -287,7 +352,6 @@ async function autoPost() {
 				} )
 
 			} else {
-
 				startStopPosting();
 			}
 	
@@ -319,41 +383,17 @@ async function addDownloadQueue(msg) {
 						
 						let formData = new FormData();
 						let uploadKeyboard = {
-							inline_keyboard: [
-								[
-									{
-										text: '✅',
-										callback_data: 'confirmPost'
-									},
-									{
-										text: '✅ all',
-										callback_data: 'confirmAllPost'
-									},
-									{
-										text: '🔥',
-										callback_data: 'confirmAsExclusivePost',
-	
-									},
-
-								],
-								[
-									{
-										text: '🚫',
-										callback_data: 'deletePost'
-									},
-									{
-										text: '🗑 all',
-										callback_data: 'deleteAllPost'
-									}
-								]
-							]
+							inline_keyboard: inlineKeyboard.loadPic
 						}
+
 						formData.append('chat_id', user.chatId);
 						formData.append('photo',  data.name);
 						formData.append('reply_markup', JSON.stringify(uploadKeyboard));
+						
 						formData.append('caption', `\n✅ - загрузить, ✅all - загрузить все 
 						\n🔥 - загрузить как личное фото
 						\n🚫 - удалить, 🗑all - удалить все фото `);
+
 	
 						axios.post(`${telegramAPI}sendPhoto`, formData, {
 							headers: {
@@ -373,6 +413,8 @@ async function addDownloadQueue(msg) {
 			} else {
 				bot.sendMessage(msg.chat.id, 'отправка сообщений ограничена');
 			}
+		} else {
+			bot.sendMessage(msg.chat.id, 'не узнал тебя, введи /start');
 		}
 
 	} )
@@ -749,38 +791,12 @@ function getPostsFromMembers(userAdmin) {
 					}
 				}).then( (memberInfo) => {
 
-					
-
 					elements.forEach( (memberPost) => {
 
 						let formData = new FormData;
 						let membersPostsKeyboard = {
-							inline_keyboard: [
-								[
-									{
-										text: '✅',
-										callback_data: 'publishMemberPost'
-									},
-									{
-										text: '🚫',
-										callback_data: 'deleteMemberPost'
-									},
-								],
-								[
-									{
-										text: 'B A N',
-										callback_data: 'blockMemberPost',
-	
-									},
-									{
-										text: '🗑 all',
-										callback_data: 'deleteAllMemberPost'
-									}
-								]
-							]
+							inline_keyboard: inlineKeyboard.memberPosts
 						}
-
-						
 						
 						formData.append('chat_id', userAdmin.chatId);
 						formData.append('photo', fs.createReadStream(path.join(__dirname, `/membersPosts/`) + memberPost.name + '.jpg'));
