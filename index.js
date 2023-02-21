@@ -24,8 +24,8 @@ const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema} = r
 
 const FormData = require('form-data');
 
-const { query } = require('./db.js');
-const { dirname } = require('path');
+// const { query } = require('./db.js');
+// const { dirname } = require('path');
 
 let onPosting, postingInterval, postingTimerID;
 
@@ -191,7 +191,7 @@ function memberPostsActions(query) {
 				chat_id: query.message.chat.id,
 				message_id: query.message.message_id,
 				reply_markup: {
-					inline_keyboard: inlineKeyboard.memberPostsBack
+					inline_keyboard: inlineKeyboard.memberPostsBlockBack
 				}
 			});
 
@@ -207,7 +207,11 @@ function memberPostsActions(query) {
 			}).then( posts => {
 
 				posts.forEach( post => {
-					bot.deleteMessage(chatId, post.messageId);
+
+					bot.editMessageCaption(`🚫 пост удален из очереди`, {
+						chat_id: chatId,
+						message_id: post.messageId
+					});
 
 					fs.unlink(path.join(__dirname, '/membersPosts/') + post.name + '.jpg', (e) => {
 						console.log(e);
@@ -225,6 +229,9 @@ function memberPostsActions(query) {
 					member.ban = true;
 					member.save().then( () => {
 						bot.answerCallbackQuery(query.id, `${member.firstName} заблокирован`);
+						bot.sendMessage(chatId, `👤 [${member.firstName}](https://t.me/${member.userName}) заблокирован`, {
+							parse_mode: 'MarkdownV2'
+						});
 					} )
 				} )
 
@@ -237,7 +244,7 @@ function memberPostsActions(query) {
 				chat_id: query.message.chat.id,
 				message_id: query.message.message_id,
 				reply_markup: {
-					inline_keyboard: inlineKeyboard.memberPostsBack
+					inline_keyboard: inlineKeyboard.memberPostsDeleteAllBack
 				}
 			});
 
@@ -253,7 +260,11 @@ function memberPostsActions(query) {
 			}).then( posts => {
 
 				posts.forEach( post => {
-					bot.deleteMessage(chatId, post.messageId);
+
+					bot.editMessageCaption(`🚫 пост удален из очереди`, {
+						chat_id: chatId,
+						message_id: post.messageId
+					});
 
 					fs.unlink(path.join(__dirname, '/membersPosts/') + post.name + '.jpg', (e) => {
 						console.log(e);
@@ -262,7 +273,7 @@ function memberPostsActions(query) {
 					});
 					
 				} );
-				bot.answerCallbackQuery(query.id, 'посты удалены');
+				bot.answerCallbackQuery(query.id, '🚫 посты удалены');
 			} )	
 
 		} break;
@@ -277,11 +288,21 @@ function memberPostsActions(query) {
 				}
 			}).then( (post) => {
 
-				bot.deleteMessage(chatId, messageId);
-				post.destroy();
-				post.save();
+				fs.unlink(path.join(__dirname, '/membersPosts/') + post.name + '.jpg', (e) => {
+					console.log(e);
 
-				bot.answerCallbackQuery(query.id, 'пост удален');
+					bot.editMessageCaption(`🚫 пост удален из очереди`, {
+						chat_id: chatId,
+						message_id: post.messageId
+					});
+	
+					bot.answerCallbackQuery(query.id, '🚫 пост удален');
+
+					post.destroy();
+					post.save();
+				});
+
+
 			} )
 
 		} break;
@@ -298,8 +319,13 @@ function memberPostsActions(query) {
 
 				createPostInDB(post.name, post.userChatId, post.authorUserName, PostShema);
 				fs.rename( path.join(__dirname + '/membersPosts/') + post.name + '.jpg', path.join(__dirname + '/posts/') + post.name + '.jpg', () => {
-					bot.deleteMessage(chatId, post.messageId);
-					bot.answerCallbackQuery(query.id, 'добавлен в очередь постинга');
+					
+					bot.editMessageCaption(`💾 пост добавлен в очередь постинга`, {
+						chat_id: chatId,
+						message_id: post.messageId
+					});
+
+					bot.answerCallbackQuery(query.id, '💾 добавлен в очередь постинга');
 					post.destroy();
 					post.save();
 				} )
@@ -845,7 +871,7 @@ function changePostingInterval(userAdmin) {
 		bot.onText(/[1-9]/, (msg) => {
 			bot.removeTextListener(/[1-9]/);
 
-			if ( msg.text >= 1 ) {
+			if ( msg.text >= 1 && msg.text != (postingInterval / 60000) ) {
 
 				let newInterval = msg.text * 60000;
 
@@ -866,6 +892,8 @@ function changePostingInterval(userAdmin) {
 					}
 
 				} )
+			} else {
+				bot.sendMessage(userAdmin.chatId, 'недопустимое значение либо интервал уже установлен в этом значении')
 			}
 
 		})

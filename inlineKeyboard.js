@@ -52,7 +52,7 @@ module.exports = {
             }
         ]
     ],
-    memberPostsBack: [
+    memberPostsBlockBack: [
         [
             {
                 text: 'назад',
@@ -61,6 +61,18 @@ module.exports = {
             {
                 text: 'да',
                 callback_data: 'blockMemberPostConfirm'
+            },
+        ]
+    ],
+    memberPostsDeleteAllBack: [
+        [
+            {
+                text: 'назад',
+                callback_data: 'memberPostMainMenu'
+            },
+            {
+                text: 'да',
+                callback_data: 'deleteAllMemberPostConfirm'
             },
         ]
     ]
