@@ -10,7 +10,7 @@ const bot = new TelegramBot(token //{
 //}
 );
 
-//bot.setWebHook(`https://94.26.224.172/bot${token}`);
+bot.setWebHook(`https://auto-post-bot.vercel.app/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
