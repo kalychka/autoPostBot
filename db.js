@@ -1,12 +1,3 @@
 const { Sequelize } = require('sequelize');
 
-module.exports = new Sequelize(
-    'yamei',
-    'kalychka',
-    '9pniZRerMN5Y',
-    {
-        host: '94.26.224.171',
-        port: '6432',
-        dialect: 'postgres'
-    }
-)
+module.exports = new Sequelize('postgres://kalychka:pwPG3Ot8YEAq@ep-silent-field-988195.ap-southeast-1.aws.neon.tech/neondb?sslmode=require')
