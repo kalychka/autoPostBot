@@ -13,7 +13,7 @@ const bot = new TelegramBot(token, {
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
-const channelId = '@whorebotplace';
+const channelId = '@prnaddiction';
 
 const sequalize = require('./db');
 
