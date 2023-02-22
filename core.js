@@ -1,10 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
 
-//const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
+const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
 
 const bot = new TelegramBot(token);
 
-bot.setWebHook(`https://auto-post-bot.vercel.app/bot${token}`);
+bot.setWebHook(`https://kalychka.onrender.com/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
