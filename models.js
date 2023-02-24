@@ -55,9 +55,21 @@ const InfoShema = sequalize.define('info', {
     userName: {type: DataTypes.STRING},
 })
 
+const ParseQueueShema = sequalize.define('parseQueue', {
+    ID: {type: DataTypes.INTEGER, primaryKey: true, unique: true, autoIncrement: true},
+    name: {type: DataTypes.STRING},
+    type: {type: DataTypes.STRING},
+    path: {type: DataTypes.STRING},
+    workInChatId: {type: DataTypes.BIGINT},
+    messageId: {type: DataTypes.INTEGER},
+},
+{
+    timestamps: false,
+})
+
 UserShema.hasMany(PostShema);
 UserShema.hasMany(MemberPostShema);
 UserShema.hasMany(DownloadQueueShema);
 DownloadQueueShema.belongsTo(UserShema);
 
-module.exports = {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema};
+module.exports = {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema, ParseQueueShema};

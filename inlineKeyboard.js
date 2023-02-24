@@ -75,5 +75,29 @@ module.exports = {
                 callback_data: 'deleteAllMemberPostConfirm'
             },
         ]
+    ],
+    parseJoyReactor: [
+        [
+            {
+                text: 'suicide girls',
+                callback_data: 'parseJoyReactorSuicideGirls'
+            },
+            {
+                text: 'показать',
+                callback_data: 'JoyReactorSuicideGirlsShow'
+            }
+        ]
+    ],
+    parseOpenPic: [
+        [
+            {
+                text: '✅',
+                callback_data: 'parseOpenPicConfirm'
+            },
+            {
+                text: '🚫',
+                callback_data: 'parseOpenPicDecline'
+            }
+        ]
     ]
 }

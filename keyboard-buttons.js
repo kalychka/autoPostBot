@@ -3,9 +3,16 @@ module.exports = {
 		info: 'ℹ️ инфо',
 		startStopPosting: '🕹 on/off постинг',
 		adminMembersPics: '🌁 предложка',
-		changeInterval: '📊 интервал'
+		changeInterval: '📊 интервал',
+		parsing: '🔍 парсинг'
 	},
-	adminBackMainMenu: {
+	adminCloseMembersPics: {
+		mainMenu: 'назад'
+	},
+	adminParseSource: {
+		joyReactor: 'JoyReactor'
+	},
+	adminCloseParseMenu: {
 		mainMenu: 'назад'
 	}
 }

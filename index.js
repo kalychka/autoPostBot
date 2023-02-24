@@ -6,6 +6,8 @@ const {
 	sequalize
 } = require('./core.js');
 
+const Parse = require('./parse.js');
+
 const keyboard = require('./keyboard');
 
 const inlineKeyboard = require('./inlineKeyboard');
@@ -20,12 +22,9 @@ const path = require('path');
 
 const download = require('download');
 
-const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema} = require('./models');
+const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema, ParseQueueShema} = require('./models');
 
 const FormData = require('form-data');
-
-// const { query } = require('./db.js');
-// const { dirname } = require('path');
 
 let onPosting, postingInterval, postingTimerID;
 
@@ -138,6 +137,9 @@ async function start() {
 
 	//запуск прослушки действий с постами при загрузке
 	bot.on('callback_query', savePostFromQueue);
+
+	//запуск прослушки действий с источником парсинга
+	bot.on('callback_query', parsingActions);
 
 };
 
@@ -317,7 +319,12 @@ function memberPostsActions(query) {
 				}
 			}).then( (post) => {
 
-				createPostInDB(post.name, post.userChatId, post.authorUserName, PostShema);
+				if ( post.exclusive ) {
+					createPostInDB(post.name, post.userChatId, post.authorUserName, PostShema, true);
+				} else {
+					createPostInDB(post.name, post.userChatId, post.authorUserName, PostShema);
+				}
+
 				fs.rename( path.join(__dirname + '/membersPosts/') + post.name + '.jpg', path.join(__dirname + '/posts/') + post.name + '.jpg', () => {
 					
 					bot.editMessageCaption(`💾 пост добавлен в очередь постинга`, {
@@ -331,6 +338,26 @@ function memberPostsActions(query) {
 				} )
 			} )
 		} break;
+	}
+
+}
+
+//обработка кнопок в меню выбора источника парсинга
+function parsingActions(query) {
+
+	switch (query.data) {
+
+		case 'parseJoyReactorSuicideGirls': {
+
+			Parse.getPicsFromJoyreactorSuicideGirls();
+
+		} break;
+		case 'JoyReactorSuicideGirlsShow': {
+			
+			Parse.getPicsFromParseLib('joyReactorSuicideGirls', query.message.chat.id);
+
+		} break;
+
 	}
 
 }
@@ -750,7 +777,7 @@ async function adminActions(msg) {
 				case kb.adminHome.adminMembersPics: {
 					getPostsFromMembers(userAdmin);
 				} break;
-				case kb.adminBackMainMenu.mainMenu: {
+				case kb.adminCloseMembersPics.mainMenu: {
 
 					MemberPostShema.findAll({
 						where: {
@@ -774,6 +801,35 @@ async function adminActions(msg) {
 							}
 						})
 					} )
+
+				} break;
+				case kb.adminHome.parsing: {
+
+					bot.sendMessage(userAdmin.chatId, `выбери источник: `, {
+						reply_markup: {
+							keyboard: keyboard.adminParsing,
+							resize_keyboard: true
+						}
+					})
+
+				} break;
+				case kb.adminCloseParseMenu.mainMenu: {
+
+					bot.sendMessage(userAdmin.chatId, `меню парсинга закрыто`, {
+						reply_markup: {
+							keyboard: keyboard.adminHome,
+							resize_keyboard: true
+						}
+					})
+
+				} break;
+				case kb.adminParseSource.joyReactor: {
+					
+					bot.sendMessage(userAdmin.chatId, `парсинг для joyReactor доступен с досок:`, {
+						reply_markup: {
+							inline_keyboard: inlineKeyboard.parseJoyReactor
+						}
+					});
 
 				} break;
 			}
@@ -981,7 +1037,6 @@ async function updateInfo(postingInterval, onPosting, userName) {
 
 //подключение к БД, если успешно => старт начального диалога
 connectToDB().then( () =>  start());
-
 
 
 

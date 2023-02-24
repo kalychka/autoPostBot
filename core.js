@@ -1,19 +1,15 @@
 const TelegramBot = require('node-telegram-bot-api');
+require('dotenv').config();
 
-const token = '5859407241:AAG66VfvBWGGzAt9yvawevtpSRM5CjuJjnk';
+const token = process.env.BOT_TOKEN;
 
-const bot = new TelegramBot(token, {
-    // webHook: {
-    //     port: 80
-    // }
-    polling: true
-});
+const channelId = process.env.CHANNEL_NAME;
 
-//bot.setWebHook(`https://89.248.207.100/bot${token}`);
+const bot = new TelegramBot(token);
+
+bot.setWebHook(`https://prnaddiction.ru/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
-
-const channelId = '@prnaddiction';
 
 const sequalize = require('./db');
 
