@@ -6,7 +6,9 @@ const token = process.env.BOT_TOKEN;
 const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
-    webHook
+    webHook: {
+        port: 443
+    }
 });
 
 bot.setWebHook(`https://prnaddiction.ru/bot${token}`);
