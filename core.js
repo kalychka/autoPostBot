@@ -7,7 +7,7 @@ const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
     webHook: {
-        port: 443
+        port: 8443
     }
 });
 
