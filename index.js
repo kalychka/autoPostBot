@@ -86,6 +86,7 @@ async function start() {
 
 	//начальный диалог при запуске бота
 	bot.onText(/\/start/, (msg) => {
+		console.log('liseten message');
 		//проверка есть ли пользователь в базе данных
 		UserShema.findOne({
 			where: {chatId: msg.chat.id}
