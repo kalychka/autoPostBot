@@ -7,12 +7,12 @@ module.exports = {
 		parsing: '🔍 парсинг'
 	},
 	adminCloseMembersPics: {
-		mainMenu: 'назад'
+		mainMenu: 'закрыть предложку'
 	},
 	adminParseSource: {
 		joyReactor: 'JoyReactor'
 	},
 	adminCloseParseMenu: {
-		mainMenu: 'назад'
+		mainMenu: 'закрыть парсинг'
 	}
 }

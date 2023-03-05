@@ -6,13 +6,13 @@ const token = process.env.BOT_TOKEN;
 const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
-    // webHook: {
-    //     port: 443
-    // }
-    polling: true
+    webHook: {
+        port: 443
+    }
+    //polling: true
 });
 
-//bot.setWebHook(`https://prnaddiction.ru/bot${token}`);
+bot.setWebHook(`https://prnaddiction.ru/bot${token}`);
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
