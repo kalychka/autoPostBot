@@ -6,6 +6,9 @@ module.exports = {
 		[kb.adminHome.adminMembersPics, kb.adminHome.changeInterval],
 		[kb.adminHome.parsing]
 	],
+	adminBack: [
+		[kb.adminBack.back]
+	],
 	adminCloseMembersPics: [
 		[kb.adminCloseMembersPics.mainMenu]
 	],

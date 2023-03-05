@@ -778,32 +778,32 @@ async function adminActions(msg) {
 				case kb.adminHome.adminMembersPics: {
 					getPostsFromMembers(userAdmin);
 				} break;
-				case kb.adminCloseMembersPics.mainMenu: {
+				// case kb.adminCloseMembersPics.mainMenu: {
 
-					MemberPostShema.findAll({
-						where: {
-							workInChatId: userAdmin.chatId
-						}
-					}).then( posts => {
+				// 	MemberPostShema.findAll({
+				// 		where: {
+				// 			workInChatId: userAdmin.chatId
+				// 		}
+				// 	}).then( posts => {
 						
-						posts.forEach( row => {
+				// 		posts.forEach( row => {
 
-							bot.deleteMessage(userAdmin.chatId, row.messageId);
-							row.messageId = null;
-							row.workInChatId = null;
-							row.save();
+				// 			bot.deleteMessage(userAdmin.chatId, row.messageId);
+				// 			row.messageId = null;
+				// 			row.workInChatId = null;
+				// 			row.save();
 
-						} );
+				// 		} );
 						
-						bot.sendMessage(userAdmin.chatId, `предложка закрыта`, {
-							reply_markup: {
-								keyboard: keyboard.adminHome,
-								resize_keyboard: true
-							}
-						})
-					} )
+				// 		bot.sendMessage(userAdmin.chatId, `предложка закрыта`, {
+				// 			reply_markup: {
+				// 				keyboard: keyboard.adminHome,
+				// 				resize_keyboard: true
+				// 			}
+				// 		})
+				// 	} )
 
-				} break;
+				// } break;
 				case kb.adminHome.parsing: {
 
 					bot.sendMessage(userAdmin.chatId, `выбери источник: `, {
@@ -856,15 +856,14 @@ function getPostsFromMembers(userAdmin) {
 			\n🌁 если они кончились - перезайди в предложку
 			`, {
 				reply_markup: {
-					keyboard: keyboard.adminBackMainMenu,
+					keyboard: keyboard.adminBack,
 					resize_keyboard: true
 				}
 			});
 
 			MemberPostShema.findAll({
 				where: {
-					userChatId: post.userChatId,
-					workInChatId: null
+					userChatId: post.userChatId
 				}
 			}).then( (elements) => {
 	
