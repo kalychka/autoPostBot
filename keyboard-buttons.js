@@ -6,9 +6,6 @@ module.exports = {
 		changeInterval: '📊 интервал',
 		parsing: '🔍 парсинг'
 	},
-	adminBack: {
-		back: 'назад'
-	},
 	adminCloseMembersPics: {
 		mainMenu: 'назад'
 	},

@@ -856,7 +856,7 @@ function getPostsFromMembers(userAdmin) {
 			\n🌁 если они кончились - перезайди в предложку
 			`, {
 				reply_markup: {
-					keyboard: keyboard.adminBack,
+					keyboard: keyboard.adminCloseMembersPics,
 					resize_keyboard: true
 				}
 			});
@@ -900,7 +900,11 @@ function getPostsFromMembers(userAdmin) {
 							memberPost.messageId = msg.data.result.message_id;
 							memberPost.workInChatId = userAdmin.chatId;
 							memberPost.save();
-						} ).catch( e => console.log(e))
+						} ).catch( e => {
+							console.log('не удалось загрузить пикчу из архива:', e);
+							memberPost.destroy();
+							memberPost.save();
+						})
 	
 					} )
 
