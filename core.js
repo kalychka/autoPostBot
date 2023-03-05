@@ -12,7 +12,9 @@ const bot = new TelegramBot(token, {
     //polling: true
 });
 
-bot.setWebHook(`https://prnaddiction.ru/bot${token}`);
+bot.setWebHook(`https://prnaddiction.ru/bot${token}`, {
+    certificate: '/etc/ssl/prnaddiction.crt'
+});
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 
