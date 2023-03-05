@@ -7,7 +7,7 @@ const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
     webHook: {
-        port: 5000
+        port: 80
     }
     //polling: true
 });
