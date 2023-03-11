@@ -14,7 +14,7 @@ const bot = new TelegramBot(token, {
     //polling: true
 });
 
-bot.setWebHook(`https://prnaddiction.ru/index.js`, {
+bot.setWebHook(`https://prnaddiction.ru/autoPostBot/index.js`, {
     certificate: '/etc/ssl/prnaddiction.crt'
 });
 
