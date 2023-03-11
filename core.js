@@ -7,7 +7,9 @@ const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
     webHook: {
-        port: 3000
+        url: 'https://prnaddiction.ru',
+        port: 3000,
+        host: 'localhost'
     }
     //polling: true
 });
