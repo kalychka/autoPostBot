@@ -7,7 +7,7 @@ const DB_PASS = process.env.DB_PASS;
 
 module.exports = new Sequelize(
     'yamei',
-    'postgres',
+    'yamei',
     'kerosene', 
     {
         host: 'localhost',
