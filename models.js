@@ -4,6 +4,7 @@ const {DataTypes} = require('sequelize');
 
 const UserShema = sequalize.define('user', {
     chatId: {type: DataTypes.BIGINT, primaryKey: true, unique: true},
+    owner: {type: DataTypes.BOOLEAN, defaultValue: false},
     isAdmin: {type: DataTypes.BOOLEAN},
     firstName: {type: DataTypes.STRING},
     userName: {type: DataTypes.STRING},

@@ -25,6 +25,7 @@ const download = require('download');
 const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema, ParseQueueShema} = require('./models');
 
 const FormData = require('form-data');
+const { where } = require('sequelize');
 
 let onPosting, postingInterval, postingTimerID;
 
@@ -86,7 +87,7 @@ async function start() {
 
 	//начальный диалог при запуске бота
 	bot.onText(/\/start/, (msg) => {
-		console.log('liseten message');
+		
 		//проверка есть ли пользователь в базе данных
 		UserShema.findOne({
 			where: {chatId: msg.chat.id}
@@ -122,7 +123,7 @@ async function start() {
 	});
 
 	//запуск админского диалога
-	bot.onText(/[инфо|on/off постинг|предложка|интервал|предложка]/, adminActions);
+	bot.onText(/[инфо|on/off постинг|предложка|интервал|парсинг]/, adminActions);
 
 	//запуск прослушки пикч в диалоге
 	bot.on('photo', addDownloadQueue);
@@ -142,7 +143,97 @@ async function start() {
 	//запуск прослушки действий с источником парсинга
 	bot.on('callback_query', parsingActions);
 
+	//запуск прослушки действий кнопки под списком админов
+	bot.on('callback_query', changeUserPermission);
+
 };
+
+bot.onText(/\/adminList/, (msg) => {
+
+	UserShema.findOne({
+		where: {
+			chatId: msg.chat.id
+		}
+	}).then( user => {
+
+		if (user.isAdmin) {
+			UserShema.findAll({
+				where: {
+					isAdmin: true,
+					owner: false
+				}
+			}).then( users => {
+	
+				users.forEach( user => {
+	
+					bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
+						reply_markup: {
+							inline_keyboard: inlineKeyboard.adminList
+						}
+					});
+	
+				} )
+	
+			} ) 
+		} else {
+			bot.sendMessage(msg.chat.id, 'недостаточно прав');
+		}
+
+	}).catch( () => {
+		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
+	} )
+
+});
+
+bot.onText(/\/setAdmin (.+)/, (msg, [source, match]) => {
+
+	changeAdminPermission(match).then( (e) => {
+
+		bot.sendMessage(msg.chat.id, `${match} назначен администратором`);
+
+	} ).catch( () => {
+		bot.sendMessage(msg.chat.id, `что-то пошло не так`);
+	} )
+
+})
+
+//изменить права пользователя
+function changeUserPermission(query) {
+
+	let userName = query.message.text.split(':')[1];
+
+	switch (query.data) {
+		case 'changeAdminPermission': {
+
+			changeAdminPermission(userName).then( () => {
+				bot.editMessageText(`${userName} разжалован`, {
+					chat_id: query.message.chat.id,
+					message_id: query.message.message_id
+				});
+			} )
+
+
+		} break;
+	}
+}
+
+//добавить/удалить админа
+function changeAdminPermission(userName) {
+
+	return (
+		UserShema.findOne({
+			where: {
+				userName: userName
+			}
+		}).then( user => {
+	
+			user.isAdmin ? user.isAdmin = false : user.isAdmin = true;
+			user.save();
+			
+		} )
+	)
+
+}
 
 //обработка кнопок под постами в предложке
 function memberPostsActions(query) {
@@ -683,9 +774,13 @@ async function createUser(msg) {
 			case 'administrator': {
 				// создать сущность админа в бд
 				let userAdmin = new UserAdmin(firstName, userName, chatId);
+				let isOwner;
+
+				response.data.result.status == 'creator' ? isOwner = true: isOwner = false;
 	
 				UserShema.create({
 					chatId: userAdmin.getChatId(),
+					owner: isOwner,
 					isAdmin: userAdmin.getIsAdmin(),
 					firstName: userAdmin.getFirstName(),
 					userName: userAdmin.getUserName()

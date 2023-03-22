@@ -6,17 +6,17 @@ const token = process.env.BOT_TOKEN;
 const channelId = process.env.CHANNEL_NAME;
 
 const bot = new TelegramBot(token, {
-    webHook: {
-        url: 'https://prnaddiction.ru',
-        port: 3000,
-        host: 'localhost'
-    }
-    //polling: true
+    // webHook: {
+    //     url: 'https://prnaddiction.ru',
+    //     port: 3000,
+    //     host: 'localhost'
+    // }
+    polling: true
 });
 
-bot.setWebHook(`https://prnaddiction.ru/autoPostBot/core.js/${token}`, {
-    certificate: '/etc/ssl/prnaddiction.crt'
-});
+// bot.setWebHook(`https://prnaddiction.ru/autoPostBot/core.js/${token}`, {
+//     certificate: '/etc/ssl/prnaddiction.crt'
+// });
 
 const telegramAPI = `https://api.telegram.org/bot${token}/`;
 

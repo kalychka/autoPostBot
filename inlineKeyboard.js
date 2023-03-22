@@ -99,5 +99,14 @@ module.exports = {
                 callback_data: 'parseOpenPicDecline'
             }
         ]
+    ],
+    adminList: [
+        [
+            {
+                text: 'разжаловать',
+                callback_data: 'changeAdminPermission'
+            }
+        ]
     ]
+
 }
