@@ -107,6 +107,14 @@ module.exports = {
                 callback_data: 'changeAdminPermission'
             }
         ]
+    ],
+    banList: [
+        [
+            {
+                text: 'разбанить',
+                callback_data: 'unblockUser'
+            }
+        ]
     ]
 
 }

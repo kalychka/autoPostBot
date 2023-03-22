@@ -185,15 +185,69 @@ bot.onText(/\/adminList/, (msg) => {
 
 });
 
+bot.onText(/\/banList/, (msg) => {
+
+	UserShema.findOne({
+		where: {
+			chatId: msg.chat.id
+		}
+	}).then( user => {
+
+		if (user.isAdmin) {
+			UserShema.findAll({
+				where: {
+					ban: true
+				}
+			}).then( users => {
+	
+				users.forEach( user => {
+	
+					bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
+						reply_markup: {
+							inline_keyboard: inlineKeyboard.banList
+						}
+					});
+	
+				} )
+	
+			} ) 
+		} else {
+			bot.sendMessage(msg.chat.id, 'недостаточно прав');
+		}
+
+	}).catch( () => {
+		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
+	} )
+
+});
+
 bot.onText(/\/setAdmin (.+)/, (msg, [source, match]) => {
 
-	changeAdminPermission(match).then( (e) => {
+	UserShema.findOne({
+		where: {
+			chatId: msg.chat.id
+		}
+	}).then( user => {
 
-		bot.sendMessage(msg.chat.id, `${match} назначен администратором`);
+		if (user.isAdmin) {
 
-	} ).catch( () => {
-		bot.sendMessage(msg.chat.id, `что-то пошло не так`);
+			changeAdminPermission(match).then( (e) => {
+
+				bot.sendMessage(msg.chat.id, `${match} назначен администратором`);
+		
+			} ).catch( () => {
+				bot.sendMessage(msg.chat.id, `что-то пошло не так`);
+			} )
+
+		} else {
+			bot.sendMessage(msg.chat.id, 'недостаточно прав');
+		}
+
+	}).catch( () => {
+		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
 	} )
+
+
 
 })
 
@@ -214,7 +268,37 @@ function changeUserPermission(query) {
 
 
 		} break;
+		case 'unblockUser': {
+
+			UserShema.findOne({
+				where: {
+					userName: userName
+				}
+			}).then( user => {
+				unblockUser(user.chatId).then( () => {
+					bot.editMessageText(`${userName} разбанен`, {
+						chat_id: query.message.chat.id,
+						message_id: query.message.message_id
+					})
+				} )
+			} )
+
+		} break;
 	}
+}
+
+//разбанить пользователя
+function unblockUser(chatId) {
+	return (
+		UserShema.findOne({
+			where: {
+				chatId: chatId
+			}
+		}).then( user => {
+			user.ban = false;
+			user.save();
+		} )
+	)
 }
 
 //добавить/удалить админа
