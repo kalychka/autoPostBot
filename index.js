@@ -298,7 +298,7 @@ bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
 			}).then( posts => {
 
 				if ( posts.length > 0 ) {
-					
+
 					posts.forEach( post => {
 
 						// UserShema.findOne({
@@ -1078,7 +1078,7 @@ async function adminActions(msg) {
 							\n⏳ примерное время постинга: ${data.estimatedPostingTime}`);
 					} );
 				} break;
-				case kb.adminHome.startStopPosting: {			
+				case kb.adminMore.startStopPosting: {			
 
 					startStopPosting(userAdmin).then( data => {
 						if (data instanceof InfoShema) {
@@ -1091,7 +1091,7 @@ async function adminActions(msg) {
 					})
 
 				} break;
-				case kb.adminHome.changeInterval: {
+				case kb.adminMore.changeInterval: {
 					changePostingInterval(userAdmin);
 				} break;
 				case kb.adminHome.adminMembersPics: {
@@ -1125,35 +1125,35 @@ async function adminActions(msg) {
 					})
 
 				} break;
-				case kb.adminHome.parsing: {
+				// case kb.adminHome.parsing: {
 
-					bot.sendMessage(userAdmin.chatId, `выбери источник: `, {
-						reply_markup: {
-							keyboard: keyboard.adminParsing,
-							resize_keyboard: true
-						}
-					})
+				// 	bot.sendMessage(userAdmin.chatId, `выбери источник: `, {
+				// 		reply_markup: {
+				// 			keyboard: keyboard.adminParsing,
+				// 			resize_keyboard: true
+				// 		}
+				// 	})
 
-				} break;
-				case kb.adminCloseParseMenu.mainMenu: {
+				// } break;
+				// case kb.adminCloseParseMenu.mainMenu: {
 
-					bot.sendMessage(userAdmin.chatId, `меню парсинга закрыто`, {
-						reply_markup: {
-							keyboard: keyboard.adminHome,
-							resize_keyboard: true
-						}
-					})
+				// 	bot.sendMessage(userAdmin.chatId, `меню парсинга закрыто`, {
+				// 		reply_markup: {
+				// 			keyboard: keyboard.adminHome,
+				// 			resize_keyboard: true
+				// 		}
+				// 	})
 
-				} break;
-				case kb.adminParseSource.joyReactor: {
+				// } break;
+				// case kb.adminParseSource.joyReactor: {
 					
-					bot.sendMessage(userAdmin.chatId, `парсинг для joyReactor доступен с досок:`, {
-						reply_markup: {
-							inline_keyboard: inlineKeyboard.parseJoyReactor
-						}
-					});
+				// 	bot.sendMessage(userAdmin.chatId, `парсинг для joyReactor доступен с досок:`, {
+				// 		reply_markup: {
+				// 			inline_keyboard: inlineKeyboard.parseJoyReactor
+				// 		}
+				// 	});
 
-				} break;
+				// } break;
 				case kb.adminHome.more: {
 
 					bot.sendMessage(userAdmin.chatId, 'выбери что-то:', {
@@ -1169,18 +1169,6 @@ async function adminActions(msg) {
 					bot.sendMessage(userAdmin.chatId, 'идем назад...', {
 						reply_markup: {
 							keyboard: keyboard.adminHome,
-							resize_keyboard: true
-						}
-					})
-
-				} break;
-				case kb.adminMore.showCommands: {
-
-					bot.sendMessage(userAdmin.chatId, `\n/adminList - вывести список админов
-					\n/setAdmin <username> - назначить админом
-					\n/showPosts <кол-во постов> - показать посты, которые скоро будут опубликованы`, {
-						reply_markup: {
-							keyboard: keyboard.adminMore,
 							resize_keyboard: true
 						}
 					})
