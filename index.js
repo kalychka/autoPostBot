@@ -25,7 +25,8 @@ const download = require('download');
 const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema, ParseQueueShema} = require('./models');
 
 const FormData = require('form-data');
-const { where } = require('sequelize');
+const { url } = require('inspector');
+
 
 let onPosting, postingInterval, postingTimerID;
 
@@ -141,14 +142,33 @@ async function start() {
 	bot.on('callback_query', savePostFromQueue);
 
 	//запуск прослушки действий с источником парсинга
-	bot.on('callback_query', parsingActions);
+	//bot.on('callback_query', parsingActions);
 
 	//запуск прослушки действий кнопки под списком админов
 	bot.on('callback_query', changeUserPermission);
 
+
+	bot.on('polling_error', (error) => {
+		console.log(error)
+	});
+
+	// bot.sendMessage(channelId, 'посты публикуются автоматически,\nконтент от подписчиков помечен как 🔥exclusive',{
+	// 	reply_markup: {
+	// 		inline_keyboard: [
+	// 			[
+	// 				{
+	// 					text: 'предложка',
+	// 					url: 'https://t.me/prnaddictionBot'
+	// 				}
+	// 			]
+	// 		]
+	// 	}
+	// })
+
 };
 
-bot.onText(/\/adminList/, (msg) => {
+//показать список админов
+bot.onText(/\/adminlist/, (msg) => {
 
 	UserShema.findOne({
 		where: {
@@ -163,18 +183,24 @@ bot.onText(/\/adminList/, (msg) => {
 					owner: false
 				}
 			}).then( users => {
+
+				if ( users.length > 0 ) {
+
+					users.forEach( user => {
 	
-				users.forEach( user => {
+						bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
+							reply_markup: {
+								inline_keyboard: inlineKeyboard.adminList
+							}
+						});
+		
+					} )
+
+				} else {
+					bot.sendMessage(msg.chat.id, 'админов кроме тебя нет');
+				}
 	
-					bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
-						reply_markup: {
-							inline_keyboard: inlineKeyboard.adminList
-						}
-					});
-	
-				} )
-	
-			} ) 
+			} )
 		} else {
 			bot.sendMessage(msg.chat.id, 'недостаточно прав');
 		}
@@ -185,7 +211,8 @@ bot.onText(/\/adminList/, (msg) => {
 
 });
 
-bot.onText(/\/banList/, (msg) => {
+//показать банлист
+bot.onText(/\/banlist/, (msg) => {
 
 	UserShema.findOne({
 		where: {
@@ -199,16 +226,20 @@ bot.onText(/\/banList/, (msg) => {
 					ban: true
 				}
 			}).then( users => {
+
+				if ( users.length > 0 ) {
+					users.forEach( user => {
 	
-				users.forEach( user => {
-	
-					bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
-						reply_markup: {
-							inline_keyboard: inlineKeyboard.banList
-						}
-					});
-	
-				} )
+						bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
+							reply_markup: {
+								inline_keyboard: inlineKeyboard.banList
+							}
+						});
+		
+					} )
+				} else {
+					bot.sendMessage(msg.chat.id, 'банлист пуст');
+				}
 	
 			} ) 
 		} else {
@@ -221,7 +252,8 @@ bot.onText(/\/banList/, (msg) => {
 
 });
 
-bot.onText(/\/setAdmin (.+)/, (msg, [source, match]) => {
+//назначить администратора
+bot.onText(/\/setadmin (.+)/, (msg, [source, match]) => {
 
 	UserShema.findOne({
 		where: {
@@ -247,17 +279,87 @@ bot.onText(/\/setAdmin (.+)/, (msg, [source, match]) => {
 		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
 	} )
 
+})
 
+//показать очередь постов
+bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
+
+	UserShema.findOne({
+		where: {
+			chatId: msg.chat.id
+		}
+	}).then( user => {
+
+		if (user.isAdmin) {
+
+			PostShema.findAll({
+				order: [['ID']],
+				limit: match
+			}).then( posts => {
+
+				if ( posts.length > 0 ) {
+					posts.forEach( post => {
+
+						UserShema.findOne({
+							where: {
+								chatId: post.userChatId
+							}
+						}).then( author => {
+	
+							let formData = new FormData;
+							let keyboard = {
+								inline_keyboard: inlineKeyboard.showPosts
+							}
+		
+							formData.append('chat_id', msg.chat.id);
+							formData.append('photo', fs.createReadStream(path.join(__dirname, `/posts/`) + post.name + '.jpg'));
+							formData.append('reply_markup', JSON.stringify(keyboard))
+							formData.append('parse_mode', 'MarkdownV2');
+		
+							if ( post.exclusive ) {
+								formData.append('caption', `post ID:${post.ID}
+								\n[👤 ${author.firstName}](https://t.me/${author.userName})
+								\n🔥 exclusive`);
+							} else {
+								formData.append('caption', `post ID:${post.ID}
+								\n[👤 ${author.firstName}](https://t.me/${author.userName})`);
+							}
+		
+							axios.post(`${telegramAPI}sendPhoto`, formData, {
+								headers: {
+									"Content-Type": "multipart/form-data; charset=UTF-8"
+								}
+							}).catch( e => {
+								console.log('не удалось отобразить пост из очереди постинга /showPosts')
+							} )
+	
+						} )
+	
+	
+					} )
+				} else {
+					bot.sendMessage(msg.chat.id, 'постов в очереди нет');
+				}
+
+			} )
+
+		} else {
+			bot.sendMessage(msg.chat.id, 'недостаточно прав');
+		}
+
+	}).catch( () => {
+		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
+	} )
 
 })
 
 //изменить права пользователя
 function changeUserPermission(query) {
 
-	let userName = query.message.text.split(':')[1];
-
 	switch (query.data) {
 		case 'changeAdminPermission': {
+
+			let userName = query.message.text.split(':')[1];
 
 			changeAdminPermission(userName).then( () => {
 				bot.editMessageText(`${userName} разжалован`, {
@@ -270,6 +372,8 @@ function changeUserPermission(query) {
 		} break;
 		case 'unblockUser': {
 
+			let userName = query.message.text.split(':')[1];
+			
 			UserShema.findOne({
 				where: {
 					userName: userName
@@ -480,7 +584,6 @@ function memberPostsActions(query) {
 					post.save();
 				});
 
-
 			} )
 
 		} break;
@@ -514,6 +617,41 @@ function memberPostsActions(query) {
 				} )
 			} )
 		} break;
+		case 'showPostsDelete': {
+
+			let chatId = query.message.chat.id;
+			let messageId = query.message.message_id;
+
+			let postID = query.message.caption.split('ID:')[1];
+			postID = postID.split('\n')[0];
+	
+			PostShema.findOne({
+				where: {
+					ID: postID
+				}
+			}).then( (post) => {
+
+				fs.unlink(path.join(__dirname, '/posts/') + post.name + '.jpg', (e) => {
+
+					bot.editMessageCaption(`🚫 пост удален из очереди`, {
+						chat_id: chatId,
+						message_id: messageId
+					});
+	
+					bot.answerCallbackQuery(query.id, '🚫 пост удален');
+
+					post.destroy();
+					post.save();
+
+				});
+
+			} ).catch( e => {
+
+				console.log(e);
+
+			} )
+
+		} break;
 	}
 
 }
@@ -546,7 +684,7 @@ async function autoPost() {
 		console.log('Posting ON, postingInterval: ', postingInterval);
 
 		PostShema.findOne({
-			order: [ [ 'ID' ]]
+			order: [ [ 'ID' ] ]
 		}).then( (data) => {
 
 			if ( data instanceof PostShema ) {
@@ -1012,6 +1150,38 @@ async function adminActions(msg) {
 							inline_keyboard: inlineKeyboard.parseJoyReactor
 						}
 					});
+
+				} break;
+				case kb.adminHome.more: {
+
+					bot.sendMessage(userAdmin.chatId, 'выбери что-то:', {
+						reply_markup: {
+							keyboard: keyboard.adminMore,
+							resize_keyboard: true
+						}
+					})
+
+				} break;
+				case kb.adminMore.back: {
+
+					bot.sendMessage(userAdmin.chatId, 'идем назад...', {
+						reply_markup: {
+							keyboard: keyboard.adminHome,
+							resize_keyboard: true
+						}
+					})
+
+				} break;
+				case kb.adminMore.showCommands: {
+
+					bot.sendMessage(userAdmin.chatId, `\n/adminList - вывести список админов
+					\n/setAdmin <username> - назначить админом
+					\n/showPosts <кол-во постов> - показать посты, которые скоро будут опубликованы`, {
+						reply_markup: {
+							keyboard: keyboard.adminMore,
+							resize_keyboard: true
+						}
+					})
 
 				} break;
 			}

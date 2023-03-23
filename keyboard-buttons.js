@@ -1,10 +1,14 @@
 module.exports = {
 	adminHome: {
 		info: 'ℹ️ инфо',
-		startStopPosting: '🕹 on/off постинг',
 		adminMembersPics: '🌁 предложка',
+		more: 'еще...'
+	},
+	adminMore: {
+		startStopPosting: '🕹 on/off постинг',
 		changeInterval: '📊 интервал',
-		parsing: '🔍 парсинг'
+		parsing: '🔍 парсинг',
+		back: 'назад',
 	},
 	adminCloseMembersPics: {
 		mainMenu: 'закрыть предложку'

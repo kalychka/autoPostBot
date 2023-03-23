@@ -115,6 +115,14 @@ module.exports = {
                 callback_data: 'unblockUser'
             }
         ]
+    ],
+    showPosts: [
+        [
+            {
+                text: '🚫',
+                callback_data: 'showPostsDelete'
+            }
+        ]
     ]
 
 }
