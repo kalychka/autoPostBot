@@ -298,13 +298,14 @@ bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
 			}).then( posts => {
 
 				if ( posts.length > 0 ) {
+					
 					posts.forEach( post => {
 
-						UserShema.findOne({
-							where: {
-								chatId: post.userChatId
-							}
-						}).then( author => {
+						// UserShema.findOne({
+						// 	where: {
+						// 		chatId: post.userChatId
+						// 	}
+						// }).then( author => {
 	
 							let formData = new FormData;
 							let keyboard = {
@@ -313,17 +314,18 @@ bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
 		
 							formData.append('chat_id', msg.chat.id);
 							formData.append('photo', fs.createReadStream(path.join(__dirname, `/posts/`) + post.name + '.jpg'));
-							formData.append('reply_markup', JSON.stringify(keyboard))
-							formData.append('parse_mode', 'MarkdownV2');
+							formData.append('reply_markup', JSON.stringify(keyboard));
+							formData.append('caption', `post ID:${post.ID}`);
+							//formData.append('parse_mode', 'MarkdownV2');
 		
-							if ( post.exclusive ) {
-								formData.append('caption', `post ID:${post.ID}
-								\n[👤 ${author.firstName}](https://t.me/${author.userName})
-								\n🔥 exclusive`);
-							} else {
-								formData.append('caption', `post ID:${post.ID}
-								\n[👤 ${author.firstName}](https://t.me/${author.userName})`);
-							}
+							// if ( post.exclusive ) {
+							// 	formData.append('caption', `post ID:${post.ID}
+							// 	\n[👤 ${author.firstName}](https://t.me/${author.userName})
+							// 	\n🔥 exclusive`);
+							// } else {
+							// 	formData.append('caption', `post ID:${post.ID}
+							// 	\n[👤 ${author.firstName}](https://t.me/${author.userName})`);
+							// }
 		
 							axios.post(`${telegramAPI}sendPhoto`, formData, {
 								headers: {
@@ -333,7 +335,7 @@ bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
 								console.log('не удалось отобразить пост из очереди постинга /showPosts')
 							} )
 	
-						} )
+						//} )
 	
 	
 					} )
