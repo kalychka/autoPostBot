@@ -116,7 +116,7 @@ module.exports = {
         [
             {
                 text: '15',
-                callback_data: '1'
+                callback_data: '15'
             },
             {
                 text: '30',

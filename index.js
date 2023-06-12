@@ -463,7 +463,7 @@ function inlineAdminButtonsActions(query) {
 			})
 
 		} break;
-		case '1':
+		case '15':
 		case '30':
 		case '45':
 		case '60':
@@ -676,7 +676,7 @@ async function autoPost() {
 
 				formData.append('parse_mode', 'MarkdownV2');
 
-				data.exclusive ? formData.append('caption', `[porn addiction](https://t.me/+ZzphzKmpocIyMWE6) \\| \\#эксклюзив`) : formData.append('caption', `[porn addiction](https://t.me/+ZzphzKmpocIyMWE6)`);
+				data.exclusive ? formData.append('caption', `[porn addiction](https://t.me/+Aia2GBiHwsg1NDdi) \\| \\#эксклюзив`) : formData.append('caption', `[porn addiction](https://t.me/+Aia2GBiHwsg1NDdi)`);
 
 				axios.post(`${telegramAPI}sendPhoto`, formData , {
 					headers: {
@@ -684,7 +684,7 @@ async function autoPost() {
 					}
 				}).then( (e) => {
 	
-					console.log(e.data);
+					//console.log(e.data);
 
 					fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
 						if (err) console.log(err);
