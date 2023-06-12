@@ -6,7 +6,7 @@ const {
 	sequalize
 } = require('./core.js');
 
-const Parse = require('./parse.js');
+//const Parse = require('./parse.js');
 
 const keyboard = require('./keyboard');
 
@@ -25,7 +25,6 @@ const download = require('download');
 const {UserShema, PostShema, DownloadQueueShema, InfoShema, MemberPostShema, ParseQueueShema} = require('./models');
 
 const FormData = require('form-data');
-const { url } = require('inspector');
 
 
 let onPosting, postingInterval, postingTimerID;
@@ -123,34 +122,31 @@ async function start() {
 		} )
 	});
 
-	//запуск админского диалога
-	bot.onText(/[инфо|on/off постинг|предложка|интервал|парсинг]/, adminActions);
+	//запуск прослушки кнопок админского диалога
+	bot.onText(/[инфо|предложка|...]/, adminActions);
 
 	//запуск прослушки пикч в диалоге
 	bot.on('photo', addDownloadQueue);
 
+	//запуск прослушки действий с постами при загрузке
+	bot.on('callback_query', savePostFromQueue);
+
 	//запись в логи бота
-	updateInfo(60000, false, 'prnaddictionBot').then( (data) => {
+	updateInfo(1800000, false, 'prnaddictionBot', true).then( (data) => {
 		onPosting = data.onPosting;
 		postingInterval = data.postingInterval;
 	} );
 
-	//запуск прослушки действий с постами в предложке
-	bot.on('callback_query', memberPostsActions);
-
-	//запуск прослушки действий с постами при загрузке
-	bot.on('callback_query', savePostFromQueue);
-
-	//запуск прослушки действий с источником парсинга
-	//bot.on('callback_query', parsingActions);
-
-	//запуск прослушки действий кнопки под списком админов
-	bot.on('callback_query', changeUserPermission);
-
+	//запуск прослушки админских действий
+	bot.on('callback_query', inlineAdminButtonsActions);
 
 	bot.on('polling_error', (error) => {
 		console.log(error)
 	});
+
+
+	//запуск прослушки действий с источником парсинга
+	//bot.on('callback_query', parsingActions);
 
 	// bot.sendMessage(channelId, 'посты публикуются автоматически,\nконтент от подписчиков помечен как 🔥exclusive',{
 	// 	reply_markup: {
@@ -167,266 +163,8 @@ async function start() {
 
 };
 
-//показать список админов
-bot.onText(/\/adminlist/, (msg) => {
-
-	UserShema.findOne({
-		where: {
-			chatId: msg.chat.id
-		}
-	}).then( user => {
-
-		if (user.isAdmin) {
-			UserShema.findAll({
-				where: {
-					isAdmin: true,
-					owner: false
-				}
-			}).then( users => {
-
-				if ( users.length > 0 ) {
-
-					users.forEach( user => {
-	
-						bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
-							reply_markup: {
-								inline_keyboard: inlineKeyboard.adminList
-							}
-						});
-		
-					} )
-
-				} else {
-					bot.sendMessage(msg.chat.id, 'админов кроме тебя нет');
-				}
-	
-			} )
-		} else {
-			bot.sendMessage(msg.chat.id, 'недостаточно прав');
-		}
-
-	}).catch( () => {
-		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
-	} )
-
-});
-
-//показать банлист
-bot.onText(/\/banlist/, (msg) => {
-
-	UserShema.findOne({
-		where: {
-			chatId: msg.chat.id
-		}
-	}).then( user => {
-
-		if (user.isAdmin) {
-			UserShema.findAll({
-				where: {
-					ban: true
-				}
-			}).then( users => {
-
-				if ( users.length > 0 ) {
-					users.forEach( user => {
-	
-						bot.sendMessage(msg.chat.id, `💎 ${user.firstName}:${user.userName}`, {
-							reply_markup: {
-								inline_keyboard: inlineKeyboard.banList
-							}
-						});
-		
-					} )
-				} else {
-					bot.sendMessage(msg.chat.id, 'банлист пуст');
-				}
-	
-			} ) 
-		} else {
-			bot.sendMessage(msg.chat.id, 'недостаточно прав');
-		}
-
-	}).catch( () => {
-		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
-	} )
-
-});
-
-//назначить администратора
-bot.onText(/\/setadmin (.+)/, (msg, [source, match]) => {
-
-	UserShema.findOne({
-		where: {
-			chatId: msg.chat.id
-		}
-	}).then( user => {
-
-		if (user.isAdmin) {
-
-			changeAdminPermission(match).then( (e) => {
-
-				bot.sendMessage(msg.chat.id, `${match} назначен администратором`);
-		
-			} ).catch( () => {
-				bot.sendMessage(msg.chat.id, `что-то пошло не так`);
-			} )
-
-		} else {
-			bot.sendMessage(msg.chat.id, 'недостаточно прав');
-		}
-
-	}).catch( () => {
-		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
-	} )
-
-})
-
-//показать очередь постов
-bot.onText(/\/showposts (.+)/, (msg, [source, match]) => {
-
-	UserShema.findOne({
-		where: {
-			chatId: msg.chat.id
-		}
-	}).then( user => {
-
-		if (user.isAdmin) {
-
-			PostShema.findAll({
-				order: [['ID']],
-				limit: match
-			}).then( posts => {
-
-				if ( posts.length > 0 ) {
-
-					posts.forEach( post => {
-
-						// UserShema.findOne({
-						// 	where: {
-						// 		chatId: post.userChatId
-						// 	}
-						// }).then( author => {
-	
-							let formData = new FormData;
-							let keyboard = {
-								inline_keyboard: inlineKeyboard.showPosts
-							}
-		
-							formData.append('chat_id', msg.chat.id);
-							formData.append('photo', fs.createReadStream(path.join(__dirname, `/posts/`) + post.name + '.jpg'));
-							formData.append('reply_markup', JSON.stringify(keyboard));
-							formData.append('caption', `post ID:${post.ID}`);
-							//formData.append('parse_mode', 'MarkdownV2');
-		
-							// if ( post.exclusive ) {
-							// 	formData.append('caption', `post ID:${post.ID}
-							// 	\n[👤 ${author.firstName}](https://t.me/${author.userName})
-							// 	\n🔥 exclusive`);
-							// } else {
-							// 	formData.append('caption', `post ID:${post.ID}
-							// 	\n[👤 ${author.firstName}](https://t.me/${author.userName})`);
-							// }
-		
-							axios.post(`${telegramAPI}sendPhoto`, formData, {
-								headers: {
-									"Content-Type": "multipart/form-data; charset=UTF-8"
-								}
-							}).catch( e => {
-								console.log('не удалось отобразить пост из очереди постинга /showPosts')
-							} )
-	
-						//} )
-	
-	
-					} )
-				} else {
-					bot.sendMessage(msg.chat.id, 'постов в очереди нет');
-				}
-
-			} )
-
-		} else {
-			bot.sendMessage(msg.chat.id, 'недостаточно прав');
-		}
-
-	}).catch( () => {
-		bot.sendMessage(msg.chat.id, 'я тебя не знаю, введи команду /start...');
-	} )
-
-})
-
-//изменить права пользователя
-function changeUserPermission(query) {
-
-	switch (query.data) {
-		case 'changeAdminPermission': {
-
-			let userName = query.message.text.split(':')[1];
-
-			changeAdminPermission(userName).then( () => {
-				bot.editMessageText(`${userName} разжалован`, {
-					chat_id: query.message.chat.id,
-					message_id: query.message.message_id
-				});
-			} )
-
-
-		} break;
-		case 'unblockUser': {
-
-			let userName = query.message.text.split(':')[1];
-			
-			UserShema.findOne({
-				where: {
-					userName: userName
-				}
-			}).then( user => {
-				unblockUser(user.chatId).then( () => {
-					bot.editMessageText(`${userName} разбанен`, {
-						chat_id: query.message.chat.id,
-						message_id: query.message.message_id
-					})
-				} )
-			} )
-
-		} break;
-	}
-}
-
-//разбанить пользователя
-function unblockUser(chatId) {
-	return (
-		UserShema.findOne({
-			where: {
-				chatId: chatId
-			}
-		}).then( user => {
-			user.ban = false;
-			user.save();
-		} )
-	)
-}
-
-//добавить/удалить админа
-function changeAdminPermission(userName) {
-
-	return (
-		UserShema.findOne({
-			where: {
-				userName: userName
-			}
-		}).then( user => {
-	
-			user.isAdmin ? user.isAdmin = false : user.isAdmin = true;
-			user.save();
-			
-		} )
-	)
-
-}
-
-//обработка кнопок под постами в предложке
-function memberPostsActions(query) {
+//обработка админских инлайн кнопок
+function inlineAdminButtonsActions(query) {
 
 	switch ( query.data ) {
 		case 'memberPostMainMenu': {
@@ -654,26 +392,265 @@ function memberPostsActions(query) {
 			} )
 
 		} break;
-	}
+		case 'changeAdminPermission': {
 
-}
+			let userName = query.message.text.split(':')[1];
 
-//обработка кнопок в меню выбора источника парсинга
-function parsingActions(query) {
+			changeAdminPermission(userName).then( () => {
+				bot.editMessageText(`${userName} разжалован`, {
+					chat_id: query.message.chat.id,
+					message_id: query.message.message_id
+				});
+			} )
 
-	switch (query.data) {
-
-		case 'parseJoyReactorSuicideGirls': {
-
-			Parse.getPicsFromJoyreactorSuicideGirls();
 
 		} break;
-		case 'JoyReactorSuicideGirlsShow': {
+		case 'unblockUser': {
+
+			let userName = query.message.text.split(':')[1];
 			
-			Parse.getPicsFromParseLib('joyReactorSuicideGirls', query.message.chat.id);
+			UserShema.findOne({
+				where: {
+					userName: userName
+				}
+			}).then( user => {
+				unblockUser(user.chatId).then( () => {
+					bot.editMessageText(`${userName} разбанен`, {
+						chat_id: query.message.chat.id,
+						message_id: query.message.message_id
+					})
+				} )
+			} )
 
 		} break;
+		case 'startStopPosting': {
 
+			if (onPosting) {
+				onPosting = false;
+				clearInterval(postingTimerID);
+				bot.answerCallbackQuery(query.id, 'постинг остановлен');
+			} else {
+				onPosting = true;
+				postingTimerID = setInterval(autoPost, postingInterval);
+				bot.answerCallbackQuery(query.id, 'постинг запущен');
+			};
+		
+			updateInfo(postingInterval, onPosting, query.message.chat.username, true).then( data => {
+				bot.editMessageText(
+					`🕹 постинг: ${ data.onPosting ? 'исполняется' : 'остановлен'}
+					\n🌇 постов в очереди постинга: ${data.countOfPost}
+					\n🔮 постов в предложке: ${data.countOfMembersPost}
+					\n📊 интервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
+					\n⏳ примерное время постинга: ${data.estimatedPostingTime}`, 
+				{
+					chat_id: query.message.chat.id,
+					message_id: query.message.message_id,
+					reply_markup: {
+						inline_keyboard: inlineKeyboard.postingSettings
+					}
+				});
+			})
+
+		} break;
+		case 'changeInterval': {
+
+			bot.editMessageText(`Текущее значение: ${postingInterval / 60000}\nвыбери новое:`, {
+				chat_id: query.message.chat.id,
+				message_id: query.message.message_id,
+				reply_markup: {
+					inline_keyboard: inlineKeyboard.changeIntervalValue
+				}
+			})
+
+		} break;
+		case '1':
+		case '30':
+		case '45':
+		case '60':
+		case '90':
+		case '120':
+		{
+
+			postingInterval = query.data * 60000;
+			updateInfo(postingInterval, onPosting, query.message.chat.username, true).then( data => {
+
+				if ( data instanceof InfoShema) {
+
+					if ( onPosting ) {
+						clearInterval(postingTimerID);
+						postingTimerID = setInterval(autoPost, postingInterval);
+					}
+
+					bot.editMessageText(
+						`🕹 постинг: ${ data.onPosting ? 'исполняется' : 'остановлен'}
+						\n🌇 постов в очереди постинга: ${data.countOfPost}
+						\n🔮 постов в предложке: ${data.countOfMembersPost}
+						\n📊 интервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
+						\n⏳ примерное время постинга: ${data.estimatedPostingTime}`, 
+					{
+						chat_id: query.message.chat.id,
+						message_id: query.message.message_id,
+						reply_markup: {
+							inline_keyboard: inlineKeyboard.postingSettings
+						}
+					});
+
+				}
+
+			})
+
+		} break;
+		case 'showAdminList': {
+
+			UserShema.findAll({
+				where: {
+					isAdmin: true,
+					owner: false
+				}
+			}).then( users => {
+
+				if ( users.length > 0 ) {
+
+					users.forEach( user => {
+	
+						bot.sendMessage(query.message.chat.id, `💎 ${user.firstName}:${user.userName}`, {
+							reply_markup: {
+								inline_keyboard: inlineKeyboard.adminList
+							}
+						}).then( () => {
+							bot.answerCallbackQuery(query.id, 'готово');
+						})
+						
+					} )
+
+				} else {
+					bot.answerCallbackQuery(query.id, 'админов кроме тебя нет');
+				}
+	
+			} )
+
+		} break;
+		case 'showBanList': {
+
+			UserShema.findAll({
+				where: {
+					ban: true
+				}
+			}).then( users => {
+
+				if ( users.length > 0 ) {
+					users.forEach( user => {
+	
+						bot.sendMessage(query.message.chat.id, `👤 ${user.firstName}:${user.userName}`, {
+							reply_markup: {
+								inline_keyboard: inlineKeyboard.banList
+							}
+						});
+		
+					} );
+					bot.answerCallbackQuery(query.id, 'готово');
+				} else {
+					bot.answerCallbackQuery(query.id, 'бан лист пуст');
+				}
+	
+			} ) 
+
+		} break;
+		case 'setAdmin': {
+
+			bot.editMessageText('введи username: ', {
+				chat_id: query.message.chat.id,
+				message_id: query.message.message_id
+			})
+
+			bot.onText(/@([A-Za-z0-9]+)/, (msg, [source, match]) => {
+				bot.removeTextListener(/@([A-Za-z0-9]+)/);
+
+				UserShema.findOne({
+					where: {
+						chatId: query.message.chat.id
+					}
+				}).then( requestUser => {
+
+					if (requestUser.isAdmin) {
+						UserShema.findOne({
+							where: {
+								userName: match
+							}
+						}).then( user => {
+					
+							if ( user.isAdmin ) {
+								bot.answerCallbackQuery(query.id, 'уже админ');
+							} else {
+								user.isAdmin = true;
+								user.save();
+								bot.answerCallbackQuery(query.id, `${match} теперь админ`);
+							}
+							
+						} ).catch( () => {
+							bot.answerCallbackQuery(query.id, 'не найден');
+						} )
+					}
+				})
+			})
+
+		} break;
+		case 'postsQueue': {
+
+			PostShema.findAll({
+				order: [['ID']],
+				limit: 10
+			}).then( posts => {
+
+				if ( posts.length > 0 ) {
+
+					posts.forEach( post => {
+
+						UserShema.findOne({
+							where: {
+								chatId: post.userChatId
+							}
+						}).then( author => {
+	
+							let formData = new FormData;
+							let keyboard = {
+								inline_keyboard: inlineKeyboard.showPosts
+							}
+		
+							formData.append('chat_id', query.message.chat.id);
+							formData.append('photo', fs.createReadStream(path.join(__dirname, `/posts/`) + post.name + '.jpg'));
+							formData.append('reply_markup', JSON.stringify(keyboard));
+							formData.append('parse_mode', 'MarkdownV2');
+		
+							if ( post.exclusive ) {
+								formData.append('caption', `post ID:${post.ID}
+								\n[👤 ${author.firstName}](https://t.me/${author.userName})
+								\n🔥 эксклюзив`);
+							} else {
+								formData.append('caption', `post ID:${post.ID}
+								\n[👤 ${author.firstName}](https://t.me/${author.userName})`);
+							}
+		
+							axios.post(`${telegramAPI}sendPhoto`, formData, {
+								headers: {
+									"Content-Type": "multipart/form-data; charset=UTF-8"
+								}
+							}).catch( e => {
+								console.log('не удалось отобразить пост из очереди постинга /showPosts')
+							} )
+	
+						} )
+	
+	
+					} )
+				} else {
+					bot.answerCallbackQuery(query.id, 'постов в очереди нет')
+				}
+
+			} )
+
+
+		} break;
 	}
 
 }
@@ -696,32 +673,38 @@ async function autoPost() {
 				formData.append('chat_id', channelId);
 				
 				formData.append('photo', fs.createReadStream(path.join(__dirname, '/posts/') + data.name + '.jpg'));
-				
-				if ( data.exclusive ) {
-					formData.append('caption', '#эксклюзив');
-				};
-	
+
+				formData.append('parse_mode', 'MarkdownV2');
+
+				data.exclusive ? formData.append('caption', `[porn addiction](https://t.me/+ZzphzKmpocIyMWE6) \\| \\#эксклюзив`) : formData.append('caption', `[porn addiction](https://t.me/+ZzphzKmpocIyMWE6)`);
+
 				axios.post(`${telegramAPI}sendPhoto`, formData , {
 					headers: {
 						"Content-Type": "multipart/form-data; charset=UTF-8"
 					}
-				}).then( () => {
+				}).then( (e) => {
 	
+					console.log(e.data);
+
 					fs.unlink(path.join(__dirname, '/posts/') + data.name + '.jpg', (err => {
 						if (err) console.log(err);
 					}) );
 	
 					data.destroy();
 					
-				} ).catch( () => {
-					
-					console.log('pic not found: ', data.name);
+				} ).catch( (e) => {
+
+					console.log(e);
+
 					data.destroy();
 					autoPost();
 				} )
 
-			} else {
-				startStopPosting();
+			} 
+			else {
+				clearInterval(postingTimerID);
+				onPosting = false;
+				updateInfo(postingInterval, onPosting, 'prnaddictionBot', true);
 			}
 	
 		} )
@@ -1075,47 +1058,17 @@ async function adminActions(msg) {
 							\n🌇 постов в очереди постинга: ${data.countOfPost}
 							\n🔮 постов в предложке: ${data.countOfMembersPost}
 							\n📊 интервал постинга: ${(data.postingInterval / 60000).toFixed(2)} мин
-							\n⏳ примерное время постинга: ${data.estimatedPostingTime}`);
+							\n⏳ примерное время постинга: ${data.estimatedPostingTime}`, 
+							{reply_markup: {
+								inline_keyboard: inlineKeyboard.postingSettings
+							}});
+						
 					} );
-				} break;
-				case kb.adminMore.startStopPosting: {			
-
-					startStopPosting(userAdmin).then( data => {
-						if (data instanceof InfoShema) {
-							let autoPostingIs;
-
-							data.onPosting ? autoPostingIs = 'запущен' : autoPostingIs = 'остановлен';
-							
-							bot.sendMessage(userAdmin.chatId, `автопостинг ${autoPostingIs}`);
-						}
-					})
-
-				} break;
-				case kb.adminMore.changeInterval: {
-					changePostingInterval(userAdmin);
 				} break;
 				case kb.adminHome.adminMembersPics: {
 					getPostsFromMembers(userAdmin);
 				} break;
 				case kb.adminCloseMembersPics.mainMenu: {
-
-					// MemberPostShema.findAll({
-					// 	where: {
-					// 		workInChatId: userAdmin.chatId
-					// 	}
-					// }).then( posts => {
-						
-					// 	posts.forEach( row => {
-
-					// 		bot.deleteMessage(userAdmin.chatId, row.messageId);
-					// 		row.messageId = null;
-					// 		row.workInChatId = null;
-					// 		row.save();
-
-					// 	} );
-						
-
-					// } )
 
 					bot.sendMessage(userAdmin.chatId, `предложка закрыта`, {
 						reply_markup: {
@@ -1125,55 +1078,15 @@ async function adminActions(msg) {
 					})
 
 				} break;
-				// case kb.adminHome.parsing: {
-
-				// 	bot.sendMessage(userAdmin.chatId, `выбери источник: `, {
-				// 		reply_markup: {
-				// 			keyboard: keyboard.adminParsing,
-				// 			resize_keyboard: true
-				// 		}
-				// 	})
-
-				// } break;
-				// case kb.adminCloseParseMenu.mainMenu: {
-
-				// 	bot.sendMessage(userAdmin.chatId, `меню парсинга закрыто`, {
-				// 		reply_markup: {
-				// 			keyboard: keyboard.adminHome,
-				// 			resize_keyboard: true
-				// 		}
-				// 	})
-
-				// } break;
-				// case kb.adminParseSource.joyReactor: {
-					
-				// 	bot.sendMessage(userAdmin.chatId, `парсинг для joyReactor доступен с досок:`, {
-				// 		reply_markup: {
-				// 			inline_keyboard: inlineKeyboard.parseJoyReactor
-				// 		}
-				// 	});
-
-				// } break;
 				case kb.adminHome.more: {
 
 					bot.sendMessage(userAdmin.chatId, 'выбери что-то:', {
 						reply_markup: {
-							keyboard: keyboard.adminMore,
-							resize_keyboard: true
+							inline_keyboard: inlineKeyboard.adminOptions,
 						}
 					})
 
-				} break;
-				case kb.adminMore.back: {
-
-					bot.sendMessage(userAdmin.chatId, 'идем назад...', {
-						reply_markup: {
-							keyboard: keyboard.adminHome,
-							resize_keyboard: true
-						}
-					})
-
-				} break;
+				} break
 			}
 		}
 
@@ -1228,7 +1141,7 @@ function getPostsFromMembers(userAdmin) {
 
 						if ( memberPost.exclusive ) {
 							formData.append('caption', `[👤 ${memberInfo.firstName}](https://t.me/${memberInfo.userName})
-							\n🔥 exclusive`);
+							\n🔥 эксклюзив`);
 						} else {
 							formData.append('caption', `[👤 ${memberInfo.firstName}](https://t.me/${memberInfo.userName})`);
 						}
@@ -1265,43 +1178,6 @@ function getPostsFromMembers(userAdmin) {
 
 }
 
-//изменяет интервал постинга
-function changePostingInterval(userAdmin) {
-
-	bot.sendMessage(userAdmin.chatId, 'введи новый интервал постинга в минутах, жду').then( () => {
-		bot.onText(/[1-9]/, (msg) => {
-			bot.removeTextListener(/[1-9]/);
-
-			if ( msg.text >= 1 && msg.text != (postingInterval / 60000) ) {
-
-				let newInterval = msg.text * 60000;
-
-				updateInfo(newInterval, onPosting, userAdmin.userName).then( (data) => {
-
-					if ( data instanceof InfoShema) {
-
-						postingInterval = data.postingInterval;
-
-						if ( onPosting ) {
-							clearInterval(postingTimerID);
-							postingTimerID = setInterval(autoPost, postingInterval);
-						}
-
-						bot.sendMessage(userAdmin.chatId, `интервал изменен: ${data.postingInterval / 60000} мин
-						\nпользователь: @${data.userName}`);
-
-					}
-
-				} )
-			} else {
-				bot.sendMessage(userAdmin.chatId, 'недопустимое значение либо интервал уже установлен в этом значении')
-			}
-
-		})
-	} )
-
-}
-
 //сохраняет пикчи на диск
 async function downloadPhoto(element, folder) {
 
@@ -1332,22 +1208,8 @@ async function createPostInDB(name, chatId, authorUserName, Shema, exclusive = f
 	})
 }
 
-function startStopPosting(userAdmin = {userName: '@prnaddictionBot'}) {
-
-	onPosting ? onPosting = false : onPosting = true;
-
-	if ( onPosting ) {
-		postingTimerID = setInterval(autoPost, postingInterval);
-	} else {
-		clearInterval(postingTimerID);
-	}
-
-	return updateInfo(postingInterval, onPosting, userAdmin.userName)
-
-};
-
 //записывает инфу о боте в БД и отдает результат
-async function updateInfo(postingInterval, onPosting, userName) {
+async function updateInfo(postingInterval, onPosting, userName, writeData = false) {
 
 	let countOfPost = await PostShema.count();
 	let countOfMembersPost = await MemberPostShema.count();
@@ -1368,16 +1230,29 @@ async function updateInfo(postingInterval, onPosting, userName) {
 		estimatedPostingTime = estimatedPostingTime + ' мин';
 	}
 	
-	return (
-		InfoShema.create({
+	if (writeData) {
+		return (
+			InfoShema.create({
+				countOfPost: countOfPost,
+				countOfMembersPost: countOfMembersPost,
+				postingInterval: postingInterval,
+				estimatedPostingTime: estimatedPostingTime,
+				onPosting: onPosting,
+				userName: userName
+			})
+		)
+	} else {
+		return data = {
 			countOfPost: countOfPost,
 			countOfMembersPost: countOfMembersPost,
 			postingInterval: postingInterval,
 			estimatedPostingTime: estimatedPostingTime,
 			onPosting: onPosting,
 			userName: userName
-		})
-	)
+
+		}
+	}
+
 }
 
 //подключение к БД, если успешно => старт начального диалога

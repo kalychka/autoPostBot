@@ -76,30 +76,6 @@ module.exports = {
             },
         ]
     ],
-    parseJoyReactor: [
-        [
-            {
-                text: 'suicide girls',
-                callback_data: 'parseJoyReactorSuicideGirls'
-            },
-            {
-                text: 'показать',
-                callback_data: 'JoyReactorSuicideGirlsShow'
-            }
-        ]
-    ],
-    parseOpenPic: [
-        [
-            {
-                text: '✅',
-                callback_data: 'parseOpenPicConfirm'
-            },
-            {
-                text: '🚫',
-                callback_data: 'parseOpenPicDecline'
-            }
-        ]
-    ],
     adminList: [
         [
             {
@@ -121,6 +97,74 @@ module.exports = {
             {
                 text: '🚫',
                 callback_data: 'showPostsDelete'
+            }
+        ]
+    ],
+    postingSettings: [
+        [
+            {
+                text: '🕹 вкл/выкл постинг',
+                callback_data: 'startStopPosting'
+            },
+            {
+                text: '📊 интервал',
+                callback_data: 'changeInterval'
+            }
+        ]
+    ],
+    changeIntervalValue: [
+        [
+            {
+                text: '15',
+                callback_data: '1'
+            },
+            {
+                text: '30',
+                callback_data: '30'
+            },
+            {
+                text: '45',
+                callback_data: '45'
+            }
+        ],
+        [
+            {
+                text: '60',
+                callback_data: '60'
+            },
+            {
+                text: '90',
+                callback_data: '90'
+            },
+            {
+                text: '120',
+                callback_data: '120'
+            }
+        ],
+    ],
+    adminOptions: [
+        [
+            {
+                text: 'показать список админов',
+                callback_data: 'showAdminList'
+            }
+        ],
+        [
+            {
+                text: 'банлист',
+                callback_data: 'showBanList'
+            }
+        ],
+        [
+            {
+                text: 'выдать админку',
+                callback_data: 'setAdmin'
+            }
+        ],
+        [
+            {
+                text: 'очередь постов',
+                callback_data: 'postsQueue'
             }
         ]
     ]
